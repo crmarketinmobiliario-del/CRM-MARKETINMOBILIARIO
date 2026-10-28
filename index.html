@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#103c61">
+<meta name="theme-color" content="#080808">
 <meta name="description" content="Lector de capturas de contactos para CRM Torres Maldonado">
 <title>Lector de capturas | CRM Torres Maldonado</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -13,11 +13,12 @@
 <header><div class="wrap"><div class="eyebrow">CRM TORRES MALDONADO · CAPTURA DE CONTACTOS</div><h1>Lector de capturas</h1><p>Extrae texto de fotos, conversaciones y capturas para facilitar el registro de prospectos inmobiliarios.</p><p><a class="crm-entry" href="crm.html">Abrir CRM inmobiliario</a></p></div></header>
 <main class="wrap">
 <section class="card"><h2>1. Elige la captura o fotografía</h2><p class="help">Selecciona una captura de WhatsApp, Messenger o Marketplace, una foto de libreta o cualquier imagen con datos de un prospecto. Para manuscritos, usa buena luz y procura que el texto se vea claro.</p><label class="filebutton" for="photo">Elegir imagen o tomar foto</label><input id="photo" type="file" accept="image/*" capture="environment"><div class="toolbar"><button id="rotate" class="secondary" type="button" disabled>Girar 90°</button><button id="clear" class="secondary" type="button" disabled>Limpiar selección</button></div><div class="stage" id="stage"><canvas id="photoCanvas" aria-label="Captura o fotografía del contacto"></canvas><canvas id="selectionCanvas" aria-label="Área para seleccionar texto"></canvas><p id="photoHint">Aquí aparecerá tu imagen.</p></div><p class="help">Arrastra sobre una parte para leer solo ese texto. Si no seleccionas un área, se leerá la imagen completa.</p><div class="toolbar"><button id="recognize" disabled>Leer texto</button><button id="cancel" class="secondary" type="button" disabled>Cancelar lectura</button></div><p id="status" class="status" role="status">Listo para comenzar.</p></section>
-<section class="card"><h2>2. Revisa y copia el texto</h2><p class="help">El lector conserva el texto tal como lo reconoce. No calcula precios, totales ni notas de venta. Corrige los errores y copia el texto a la ficha del contacto en el CRM.</p><label for="recognizedText">Texto reconocido o editable</label><textarea id="recognizedText" rows="9" placeholder="El texto leído aparecerá aquí. También puedes pegarlo o corregirlo manualmente."></textarea><div class="toolbar"><button id="copy" type="button">Copiar texto para el CRM</button><button id="download" class="secondary" type="button">Descargar texto</button><button id="reset" class="danger" type="button">Nueva captura</button><a class="crm-entry" href="crm.html">Abrir CRM</a></div></section>
-<section class="card"><h2>Privacidad y revisión</h2><p class="help">El reconocimiento OCR se ejecuta en este dispositivo; la imagen no se envía a Supabase ni se guarda en el CRM. El lector no crea contactos automáticamente: revisa el texto, cópialo y pégalo en la captura de contacto. Confirma siempre los datos antes de guardarlos.</p></section>
+<section class="card"><h2>2. Revisar y enviar al CRM</h2><p class="help">El lector conserva el texto reconocido. No pide productos, cantidades ni importes, y no calcula totales. Revisa y corrige los datos antes de enviarlos.</p><label for="recognizedText">Texto reconocido o editable</label><textarea id="recognizedText" rows="9" placeholder="El texto leído aparecerá aquí. También puedes corregirlo manualmente."></textarea><label for="captureSource">Origen del contacto</label><select id="captureSource"><option>WhatsApp</option><option>Messenger</option><option>Marketplace</option><option>Libreta</option></select><div class="toolbar"><button id="send" type="button">Enviar al CRM</button><button id="copy" class="secondary" type="button">Copiar texto</button><button id="download" class="secondary" type="button">Descargar texto</button><button id="reset" class="danger" type="button">Nueva captura</button></div></section>
+<section class="card"><h2>Privacidad y revisión</h2><p class="help">El reconocimiento OCR se ejecuta en este dispositivo. Al pulsar Enviar al CRM, el texto pasa a la captura del contacto; revisa los datos y confirma antes de guardarlos.</p></section>
 </main>
 <footer>CRM Torres Maldonado · Captura de contactos</footer>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="capture-bridge.js" defer></script>
 <script src="app.js" defer></script>
 <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js").catch(() => {});</script>
 </body>

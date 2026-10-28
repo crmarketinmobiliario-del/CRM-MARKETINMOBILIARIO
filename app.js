@@ -62,8 +62,8 @@ function rectangle(a, b) { return { x:Math.min(a.x,b.x), y:Math.min(a.y,b.y), w:
 function drawSelections() {
   selectCtx.clearRect(0, 0, selectionCanvas.width, selectionCanvas.height);
   selectCtx.lineWidth = Math.max(2, selectionCanvas.width / 500);
-  for (const r of selections) { selectCtx.fillStyle = "rgba(8,122,101,.14)"; selectCtx.strokeStyle = "#087a65"; selectCtx.fillRect(r.x,r.y,r.w,r.h); selectCtx.strokeRect(r.x,r.y,r.w,r.h); }
-  if (drawing) { const r=rectangle(drawing.start,drawing.end); selectCtx.strokeStyle="#f39a23"; selectCtx.strokeRect(r.x,r.y,r.w,r.h); }
+  for (const r of selections) { selectCtx.fillStyle = "rgba(198,170,121,.18)"; selectCtx.strokeStyle = "#c6aa79"; selectCtx.fillRect(r.x,r.y,r.w,r.h); selectCtx.strokeRect(r.x,r.y,r.w,r.h); }
+  if (drawing) { const r=rectangle(drawing.start,drawing.end); selectCtx.strokeStyle="#d4af37"; selectCtx.strokeRect(r.x,r.y,r.w,r.h); }
 }
 selectionCanvas.addEventListener("pointerdown", event => { if (!sourceImage || busy) return; selectionCanvas.setPointerCapture(event.pointerId); drawing={start:position(event),end:position(event)}; drawSelections(); });
 selectionCanvas.addEventListener("pointermove", event => { if (!drawing) return; drawing.end=position(event); drawSelections(); });
@@ -107,6 +107,16 @@ $("copy").addEventListener("click", async () => {
   const text=$("recognizedText").value.trim(); if(!text){setStatus("Primero lee la imagen o pega el texto.");return;}
   try { await navigator.clipboard.writeText(text); setStatus("Texto copiado. Pégalo en la ficha del contacto en el CRM."); }
   catch(_) { $("recognizedText").focus(); $("recognizedText").select(); setStatus("Texto seleccionado. Cópialo y pégalo en el CRM."); }
+});
+$("send").addEventListener("click", async () => {
+  const text=$("recognizedText").value.trim();
+  if(!text){setStatus("Primero lee la imagen o pega el texto que quieres registrar.");return;}
+  if(!window.BarrioCapture?.entregar){setStatus("No se pudo conectar con el CRM. Recarga la página e inténtalo de nuevo.");return;}
+  try {
+    await window.BarrioCapture.entregar({texto:text,origen:$("captureSource").value});
+    setStatus("Abriendo el CRM con el texto de la captura…");
+    window.location.href="./crm.html?captura=lector";
+  } catch(error) { setStatus(`No se pudo enviar al CRM: ${error.message}`); }
 });
 $("download").addEventListener("click", () => {
   const text=$("recognizedText").value.trim(); if(!text){setStatus("Primero lee la imagen o pega el texto.");return;}

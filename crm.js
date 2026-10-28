@@ -191,6 +191,7 @@
     if (user) {
       $("accountEmail").textContent = user.email || "Sesión activa";
       await refresh();
+      receiveReaderCapture();
     } else {
       leads = [];
       renderStats(); renderLeads(); renderCalendar();
@@ -423,6 +424,25 @@
     const prefill = { ...hints, source: sourceText, comments: `Texto de la captura para revisar:\n${text}` };
     $("captureDialog").close(); openNewLead(prefill);
   });
+  function receiveReaderCapture() {
+    let capture;
+    try {
+      const saved = localStorage.getItem("crm_pending_capture_v1");
+      if (!saved) return;
+      capture = JSON.parse(saved);
+    } catch (_) { return; }
+    const text = String(capture?.texto || "").trim();
+    if (!text) return;
+    const source = String(capture.origen || "");
+    if ([...$("captureSource").options].some(option => option.value === source || option.textContent === source)) {
+      $("captureSource").value = source;
+    }
+    $("ocrText").value = text;
+    $("capturePreviewWrap").hidden = true;
+    $("ocrStatus").textContent = `Texto recibido del lector (${text.length} caracteres). Revísalo y pulsa “Usar texto para nuevo contacto”.`;
+    localStorage.removeItem("crm_pending_capture_v1");
+    if (!$("captureDialog").open) $("captureDialog").showModal();
+  }
 
   function renderCalendar() {
     const monthLabel = visibleMonth.toLocaleDateString("es-MX", { month:"long", year:"numeric" });

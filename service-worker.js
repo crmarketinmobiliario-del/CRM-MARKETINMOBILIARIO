@@ -1,5 +1,5 @@
-const CACHE = "crm-capture-shell-v6";
-const SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest", "./crm.html", "./crm.css", "./crm.js", "./supabase-config.js", "./icon-rm-192.png", "./icon-rm-512.png"];
+const CACHE = "crm-capture-shell-v7";
+const SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./capture-bridge.js", "./manifest.webmanifest", "./crm.html", "./crm.css", "./crm.js", "./supabase-config.js", "./icon-rm-192.png", "./icon-rm-512.png"];
 self.addEventListener("install", event => {
     event.waitUntil((async () => {
         const cache = await caches.open(CACHE);
