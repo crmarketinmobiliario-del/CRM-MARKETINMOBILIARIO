@@ -1,0 +1,25 @@
+{
+  "name": "CRM y Lector | Torrez & Maldonado",
+  "short_name": "CRM Torrez",
+  "description": "CRM inmobiliario y lector de capturas de Torrez & Maldonado",
+  "lang": "es-MX",
+  "start_url": "./crm.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#080808",
+  "icons": [
+    {
+      "src": "icon-rm-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-rm-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
