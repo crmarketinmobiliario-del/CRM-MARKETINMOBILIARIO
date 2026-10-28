@@ -1,7 +1,7 @@
 {
-  "name": "CRM y Lector | Torrez & Maldonado",
-  "short_name": "CRM Torrez",
-  "description": "CRM inmobiliario y lector de capturas de Torrez & Maldonado",
+  "name": "CRM y Lector | Torres Maldonado",
+  "short_name": "CRM Torres",
+  "description": "CRM inmobiliario y lector de capturas de Torres Maldonado",
   "lang": "es-MX",
   "start_url": "./crm.html",
   "scope": "./",

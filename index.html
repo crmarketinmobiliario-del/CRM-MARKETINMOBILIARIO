@@ -1,23 +1,23 @@
 <!doctype html>
-<html lang="es">
+<html lang="es-MX">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#103c61">
-<title>Lector de Notas | Barrio Digital</title>
+<meta name="description" content="Lector de capturas de contactos para CRM Torres Maldonado">
+<title>Lector de capturas | CRM Torres Maldonado</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header><div class="wrap"><div class="eyebrow">BARRIO DIGITAL · HERRAMIENTAS PARA NEGOCIOS</div><h1>Lector de notas</h1><p>Fotografía, revisa y organiza notas de compra en español.</p><p><a class="crm-entry" href="crm.html">Abrir CRM de Torrez &amp; Maldonado</a></p></div></header>
+<header><div class="wrap"><div class="eyebrow">CRM TORRES MALDONADO · CAPTURA DE CONTACTOS</div><h1>Lector de capturas</h1><p>Extrae texto de fotos, conversaciones y capturas para facilitar el registro de prospectos inmobiliarios.</p><p><a class="crm-entry" href="crm.html">Abrir CRM inmobiliario</a></p></div></header>
 <main class="wrap">
-<section class="card"><h2>1. Fotografía de la nota</h2><p class="help">Selecciona una imagen JPG, PNG o una fotografía desde el teléfono. Para notas manuscritas, usa buena luz y procura que las letras se vean grandes.</p><label class="filebutton" for="photo">Seleccionar fotografía</label><input id="photo" type="file" accept="image/*" capture="environment"><div class="toolbar"><button id="rotate" class="secondary" type="button" disabled>Girar 90°</button><button id="clear" class="secondary" type="button" disabled>Limpiar selección</button></div><div class="stage" id="stage"><canvas id="photoCanvas" aria-label="Fotografía de la nota"></canvas><canvas id="selectionCanvas" aria-label="Área para seleccionar renglones"></canvas><p id="photoHint">Aquí aparecerá tu fotografía.</p></div><p class="help">Arrastra sobre la imagen para seleccionar un renglón. También puedes leer la imagen completa sin seleccionar renglones.</p><div class="toolbar"><button id="recognize" disabled>Leer nota en español</button><button id="cancel" class="secondary" disabled>Cancelar lectura</button></div><p id="status" class="status" role="status">Listo para comenzar.</p></section>
-<section class="card"><div class="heading"><h2>2. Revisar productos e importes</h2><button id="add" class="secondary" type="button">+ Agregar renglón</button></div><p class="help">El reconocimiento es una propuesta. Corrige productos, cantidades y precios antes de exportar.</p><div id="items" class="items"></div><p id="empty" class="help">Todavía no hay renglones.</p><div class="total" id="total">Total revisado: $0.00</div><div class="toolbar"><button id="copy" class="secondary" type="button">Copiar nota</button><button id="download" class="secondary" type="button">Exportar JSON</button><button id="send" type="button">Enviar a administración</button><button id="reset" class="danger" type="button">Nueva nota</button></div></section>
-<section class="card"><h2>Acerca del reconocimiento</h2><p class="help">Esta versión utiliza reconocimiento OCR en español ejecutado en tu navegador. Funciona mejor con texto impreso o manuscrita muy clara. La escritura a mano cursiva puede producir errores; revisa siempre los resultados. La primera lectura requiere internet para descargar el motor y el idioma español. La interfaz puede abrirse sin conexión después de instalarse, pero el OCR sin internet no está garantizado hasta que el navegador conserve sus archivos.</p></section>
+<section class="card"><h2>1. Elige la captura o fotografía</h2><p class="help">Selecciona una captura de WhatsApp, Messenger o Marketplace, una foto de libreta o cualquier imagen con datos de un prospecto. Para manuscritos, usa buena luz y procura que el texto se vea claro.</p><label class="filebutton" for="photo">Elegir imagen o tomar foto</label><input id="photo" type="file" accept="image/*" capture="environment"><div class="toolbar"><button id="rotate" class="secondary" type="button" disabled>Girar 90°</button><button id="clear" class="secondary" type="button" disabled>Limpiar selección</button></div><div class="stage" id="stage"><canvas id="photoCanvas" aria-label="Captura o fotografía del contacto"></canvas><canvas id="selectionCanvas" aria-label="Área para seleccionar texto"></canvas><p id="photoHint">Aquí aparecerá tu imagen.</p></div><p class="help">Arrastra sobre una parte para leer solo ese texto. Si no seleccionas un área, se leerá la imagen completa.</p><div class="toolbar"><button id="recognize" disabled>Leer texto</button><button id="cancel" class="secondary" type="button" disabled>Cancelar lectura</button></div><p id="status" class="status" role="status">Listo para comenzar.</p></section>
+<section class="card"><h2>2. Revisa y copia el texto</h2><p class="help">El lector conserva el texto tal como lo reconoce. No calcula precios, totales ni notas de venta. Corrige los errores y copia el texto a la ficha del contacto en el CRM.</p><label for="recognizedText">Texto reconocido o editable</label><textarea id="recognizedText" rows="9" placeholder="El texto leído aparecerá aquí. También puedes pegarlo o corregirlo manualmente."></textarea><div class="toolbar"><button id="copy" type="button">Copiar texto para el CRM</button><button id="download" class="secondary" type="button">Descargar texto</button><button id="reset" class="danger" type="button">Nueva captura</button><a class="crm-entry" href="crm.html">Abrir CRM</a></div></section>
+<section class="card"><h2>Privacidad y revisión</h2><p class="help">El reconocimiento OCR se ejecuta en este dispositivo; la imagen no se envía a Supabase ni se guarda en el CRM. El lector no crea contactos automáticamente: revisa el texto, cópialo y pégalo en la captura de contacto. Confirma siempre los datos antes de guardarlos.</p></section>
 </main>
-<footer>© Barrio Digital · Lector de Notas</footer>
+<footer>CRM Torres Maldonado · Captura de contactos</footer>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<script src="capture-bridge.js" defer></script>
 <script src="app.js" defer></script>
 <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js").catch(() => {});</script>
 </body>
