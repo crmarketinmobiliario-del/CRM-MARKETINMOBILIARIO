@@ -18,6 +18,9 @@
   let currentImageUrl = null;
   let captureSelections = [];
   let captureDrawing = null;
+  let captureRotation = 0;
+  let captureZoom = 1;
+  let capturePanMode = false;
   const captureCanvas = $("captureCanvas");
   const captureSelectionCanvas = $("captureSelectionCanvas");
   const captureContext = captureCanvas.getContext("2d");
@@ -405,17 +408,65 @@
   $("captureBtn").addEventListener("click", () => $("captureDialog").showModal());
   function drawCaptureImage() {
     if (!currentImage) return;
-    const width = currentImage.naturalWidth;
-    const height = currentImage.naturalHeight;
-    const scale = Math.min(1, 1800 / Math.max(width, height));
-    captureCanvas.width = Math.max(1, Math.round(width * scale));
-    captureCanvas.height = Math.max(1, Math.round(height * scale));
+    const sourceWidth = currentImage.naturalWidth;
+    const sourceHeight = currentImage.naturalHeight;
+    const scale = Math.min(1, 2400 / Math.max(sourceWidth, sourceHeight));
+    const width = Math.max(1, Math.round(sourceWidth * scale));
+    const height = Math.max(1, Math.round(sourceHeight * scale));
+    const sideways = captureRotation % 180 !== 0;
+    captureCanvas.width = sideways ? height : width;
+    captureCanvas.height = sideways ? width : height;
     captureSelectionCanvas.width = captureCanvas.width;
     captureSelectionCanvas.height = captureCanvas.height;
     captureContext.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
-    captureContext.drawImage(currentImage, 0, 0, captureCanvas.width, captureCanvas.height);
+    captureContext.save();
+    if (captureRotation === 90) { captureContext.translate(captureCanvas.width, 0); captureContext.rotate(Math.PI / 2); }
+    else if (captureRotation === 180) { captureContext.translate(captureCanvas.width, captureCanvas.height); captureContext.rotate(Math.PI); }
+    else if (captureRotation === 270) { captureContext.translate(0, captureCanvas.height); captureContext.rotate(-Math.PI / 2); }
+    captureContext.drawImage(currentImage, 0, 0, width, height);
+    captureContext.restore();
+    applyCaptureZoom();
     drawCaptureSelections();
   }
+  function applyCaptureZoom() {
+    captureCanvas.style.width = `${captureZoom * 100}%`;
+    captureSelectionCanvas.style.width = `${captureZoom * 100}%`;
+    $("captureZoomLabel").textContent = captureZoom === 1 ? "Ajustar" : `${Math.round(captureZoom * 100)}%`;
+    const active = Boolean(currentImage);
+    ["zoomOutCapture", "zoomInCapture", "resetZoomCapture"].forEach(id => { $(id).disabled = !active; });
+  }
+  function changeCaptureZoom(amount) {
+    captureZoom = Math.max(1, Math.min(4, Math.round((captureZoom + amount) * 100) / 100));
+    applyCaptureZoom();
+  }
+  $("zoomInCapture").addEventListener("click", () => changeCaptureZoom(.25));
+  $("zoomOutCapture").addEventListener("click", () => changeCaptureZoom(-.25));
+  $("resetZoomCapture").addEventListener("click", () => { captureZoom = 1; applyCaptureZoom(); });
+  $("rotateCapture").addEventListener("click", () => {
+    captureRotation = (captureRotation + 90) % 360;
+    captureSelections = [];
+    drawCaptureImage();
+    $("ocrStatus").textContent = "Foto girada. Selecciona una zona o lee la imagen completa.";
+  });
+  $("openCaptureFullscreen").addEventListener("click", () => {
+    const dialog = $("captureDialog");
+    const immersive = dialog.classList.toggle("capture-immersive");
+    $("openCaptureFullscreen").textContent = immersive ? "Cerrar foto grande" : "Abrir foto grande";
+    if (immersive) { captureZoom = 1; applyCaptureZoom(); }
+  });
+  $("toggleCapturePan").addEventListener("click", () => {
+    capturePanMode = !capturePanMode;
+    $("capturePreviewWrap").classList.toggle("capture-pan-mode", capturePanMode);
+    $("toggleCapturePan").textContent = capturePanMode ? "Seleccionar texto" : "Mover foto";
+    $("ocrStatus").textContent = capturePanMode ? "Modo mover: desplaza la foto con el dedo. Cuando llegues al texto, pulsa “Seleccionar texto”." : "Modo selección: arrastra una vez alrededor del texto que quieras leer.";
+  });
+  $("captureDialog").addEventListener("close", () => {
+    $("captureDialog").classList.remove("capture-immersive");
+    $("openCaptureFullscreen").textContent = "Abrir foto grande";
+    capturePanMode = false;
+    $("capturePreviewWrap").classList.remove("capture-pan-mode");
+    $("toggleCapturePan").textContent = "Mover foto";
+  });
   function capturePoint(event) {
     const bounds = captureSelectionCanvas.getBoundingClientRect();
     return {
@@ -444,7 +495,9 @@
     $("clearCaptureSelection").disabled = captureSelections.length === 0;
   }
   captureSelectionCanvas.addEventListener("pointerdown", event => {
-    if (!currentImage || $("capturePreviewWrap").hidden) return;
+    if (!currentImage || $("capturePreviewWrap").hidden || capturePanMode) return;
+    event.preventDefault();
+    captureSelections = [];
     captureSelectionCanvas.setPointerCapture(event.pointerId);
     captureDrawing = { start: capturePoint(event), end: capturePoint(event) };
     drawCaptureSelections();
@@ -459,10 +512,10 @@
     captureDrawing.end = capturePoint(event);
     const rect = captureRect(captureDrawing.start, captureDrawing.end);
     captureDrawing = null;
-    if (rect.w > 12 && rect.h > 8) captureSelections.push(rect);
+    if (rect.w > 12 && rect.h > 8) captureSelections = [rect];
     drawCaptureSelections();
     $("ocrStatus").textContent = captureSelections.length
-      ? `${captureSelections.length} zona(s) seleccionada(s). Pulsa “Leer texto”.`
+      ? "Zona seleccionada. Pulsa “Leer texto”; al marcar otra, se reemplazará esta selección."
       : "Arrastra sobre la foto para seleccionar texto, o lee la imagen completa.";
   });
   captureSelectionCanvas.addEventListener("pointercancel", () => { captureDrawing = null; drawCaptureSelections(); });
@@ -504,14 +557,21 @@
     if (currentImageUrl) URL.revokeObjectURL(currentImageUrl);
     currentImageUrl = URL.createObjectURL(file);
     captureSelections = [];
+    captureRotation = 0;
+    captureZoom = 1;
+    capturePanMode = false;
     $("capturePreviewWrap").hidden = false;
+    $("capturePreviewWrap").classList.remove("capture-pan-mode");
+    $("rotateCapture").disabled = false;
+    $("openCaptureFullscreen").disabled = false;
+    $("toggleCapturePan").disabled = false;
     $("readImageBtn").disabled = true;
     $("ocrStatus").textContent = "Abriendo foto para mostrarla completa…";
     currentImage = new Image();
     currentImage.onload = () => {
       drawCaptureImage();
       $("readImageBtn").disabled = false;
-      $("ocrStatus").textContent = `Foto lista: ${file.name}. Arrastra sobre una zona para seleccionarla o lee toda la imagen.`;
+      $("ocrStatus").textContent = `Foto lista: ${file.name}. Si aparece girada, pulsa “Girar 90°”.`;
     };
     currentImage.onerror = () => {
       currentImage = null;
@@ -524,7 +584,8 @@
     if (!window.Tesseract) { $("ocrStatus").textContent = "No se pudo cargar el lector OCR. Pega el texto manualmente o intenta más tarde."; return; }
     $("readImageBtn").disabled = true; $("ocrStatus").textContent = "Leyendo imagen en el navegador…";
     try {
-      const result = await window.Tesseract.recognize(captureImageForOCR(), "spa", { logger: message => {
+      const ocrImage = prepareCaptureForOCR(captureImageForOCR());
+      const result = await window.Tesseract.recognize(ocrImage, "spa", { logger: message => {
         if (message.status === "recognizing text" && Number.isFinite(message.progress)) $("ocrStatus").textContent = `Leyendo texto… ${Math.round(message.progress * 100)}%`;
       }});
       $("ocrText").value = result.data.text.trim();
@@ -533,6 +594,22 @@
     } catch (error) { $("ocrStatus").textContent = `No se pudo leer: ${error.message || "intenta con otra imagen"}. Puedes pegar el texto manualmente.`; }
     finally { $("readImageBtn").disabled = false; }
   });
+  function prepareCaptureForOCR(source) {
+    const scale = Math.min(2, 2600 / Math.max(source.width, source.height));
+    const prepared = document.createElement("canvas");
+    prepared.width = Math.max(1, Math.round(source.width * scale));
+    prepared.height = Math.max(1, Math.round(source.height * scale));
+    const context = prepared.getContext("2d", { willReadFrequently: true });
+    context.drawImage(source, 0, 0, prepared.width, prepared.height);
+    const pixels = context.getImageData(0, 0, prepared.width, prepared.height);
+    for (let i = 0; i < pixels.data.length; i += 4) {
+      const gray = Math.round(.299 * pixels.data[i] + .587 * pixels.data[i + 1] + .114 * pixels.data[i + 2]);
+      const contrast = Math.max(0, Math.min(255, (gray - 128) * 1.45 + 128));
+      pixels.data[i] = pixels.data[i + 1] = pixels.data[i + 2] = contrast;
+    }
+    context.putImageData(pixels, 0, 0);
+    return prepared;
+  }
   $("useCaptureBtn").addEventListener("click", () => {
     const text = $("ocrText").value.trim();
     if (!text) { $("ocrStatus").textContent = "Primero lee una imagen o pega el mensaje."; return; }
