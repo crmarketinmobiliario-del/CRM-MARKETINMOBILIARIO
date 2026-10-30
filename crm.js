@@ -15,6 +15,13 @@
   let selectedDay = startOfDay(new Date());
   let visibleMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   let currentImage = null;
+  let currentImageUrl = null;
+  let captureSelections = [];
+  let captureDrawing = null;
+  const captureCanvas = $("captureCanvas");
+  const captureSelectionCanvas = $("captureSelectionCanvas");
+  const captureContext = captureCanvas.getContext("2d");
+  const captureSelectionContext = captureSelectionCanvas.getContext("2d");
 
   function startOfDay(date) { return new Date(date.getFullYear(), date.getMonth(), date.getDate()); }
   function openDB() {
@@ -396,18 +403,128 @@
     return { name, phone, email, budget, operation, propertyType, creditType, clientType };
   }
   $("captureBtn").addEventListener("click", () => $("captureDialog").showModal());
+  function drawCaptureImage() {
+    if (!currentImage) return;
+    const width = currentImage.naturalWidth;
+    const height = currentImage.naturalHeight;
+    const scale = Math.min(1, 1800 / Math.max(width, height));
+    captureCanvas.width = Math.max(1, Math.round(width * scale));
+    captureCanvas.height = Math.max(1, Math.round(height * scale));
+    captureSelectionCanvas.width = captureCanvas.width;
+    captureSelectionCanvas.height = captureCanvas.height;
+    captureContext.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
+    captureContext.drawImage(currentImage, 0, 0, captureCanvas.width, captureCanvas.height);
+    drawCaptureSelections();
+  }
+  function capturePoint(event) {
+    const bounds = captureSelectionCanvas.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(captureSelectionCanvas.width, (event.clientX - bounds.left) * captureSelectionCanvas.width / bounds.width)),
+      y: Math.max(0, Math.min(captureSelectionCanvas.height, (event.clientY - bounds.top) * captureSelectionCanvas.height / bounds.height))
+    };
+  }
+  function captureRect(a, b) {
+    return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y) };
+  }
+  function drawCaptureSelections() {
+    if (!captureSelectionCanvas) return;
+    captureSelectionContext.clearRect(0, 0, captureSelectionCanvas.width, captureSelectionCanvas.height);
+    captureSelectionContext.lineWidth = Math.max(2, captureSelectionCanvas.width / 500);
+    for (const rect of captureSelections) {
+      captureSelectionContext.fillStyle = "rgba(198,170,121,.2)";
+      captureSelectionContext.strokeStyle = "#c6aa79";
+      captureSelectionContext.fillRect(rect.x, rect.y, rect.w, rect.h);
+      captureSelectionContext.strokeRect(rect.x, rect.y, rect.w, rect.h);
+    }
+    if (captureDrawing) {
+      const rect = captureRect(captureDrawing.start, captureDrawing.end);
+      captureSelectionContext.strokeStyle = "#d4af37";
+      captureSelectionContext.strokeRect(rect.x, rect.y, rect.w, rect.h);
+    }
+    $("clearCaptureSelection").disabled = captureSelections.length === 0;
+  }
+  captureSelectionCanvas.addEventListener("pointerdown", event => {
+    if (!currentImage || $("capturePreviewWrap").hidden) return;
+    captureSelectionCanvas.setPointerCapture(event.pointerId);
+    captureDrawing = { start: capturePoint(event), end: capturePoint(event) };
+    drawCaptureSelections();
+  });
+  captureSelectionCanvas.addEventListener("pointermove", event => {
+    if (!captureDrawing) return;
+    captureDrawing.end = capturePoint(event);
+    drawCaptureSelections();
+  });
+  captureSelectionCanvas.addEventListener("pointerup", event => {
+    if (!captureDrawing) return;
+    captureDrawing.end = capturePoint(event);
+    const rect = captureRect(captureDrawing.start, captureDrawing.end);
+    captureDrawing = null;
+    if (rect.w > 12 && rect.h > 8) captureSelections.push(rect);
+    drawCaptureSelections();
+    $("ocrStatus").textContent = captureSelections.length
+      ? `${captureSelections.length} zona(s) seleccionada(s). Pulsa “Leer texto”.`
+      : "Arrastra sobre la foto para seleccionar texto, o lee la imagen completa.";
+  });
+  captureSelectionCanvas.addEventListener("pointercancel", () => { captureDrawing = null; drawCaptureSelections(); });
+  $("clearCaptureSelection").addEventListener("click", () => {
+    captureSelections = [];
+    drawCaptureSelections();
+    $("ocrStatus").textContent = "Selección limpiada. Se leerá la foto completa.";
+  });
+  function captureImageForOCR() {
+    if (!captureSelections.length) return captureCanvas;
+    const crops = captureSelections.map(rect => {
+      const padX = Math.min(16, rect.w * .05), padY = Math.min(12, rect.h * .15);
+      const x = Math.max(0, Math.floor(rect.x - padX)), y = Math.max(0, Math.floor(rect.y - padY));
+      const width = Math.min(captureCanvas.width - x, Math.ceil(rect.w + padX * 2));
+      const height = Math.min(captureCanvas.height - y, Math.ceil(rect.h + padY * 2));
+      const scale = Math.min(3, 1800 / Math.max(width, height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      const context = canvas.getContext("2d");
+      context.fillStyle = "white";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(captureCanvas, x, y, width, height, 0, 0, canvas.width, canvas.height);
+      return canvas;
+    });
+    const margin = 12, width = Math.max(...crops.map(canvas => canvas.width));
+    const height = crops.reduce((sum, canvas) => sum + canvas.height + margin, margin);
+    const combined = document.createElement("canvas");
+    combined.width = width + margin * 2; combined.height = height;
+    const context = combined.getContext("2d");
+    context.fillStyle = "white"; context.fillRect(0, 0, combined.width, combined.height);
+    let y = margin;
+    crops.forEach(canvas => { context.drawImage(canvas, margin, y); y += canvas.height + margin; });
+    return combined;
+  }
   $("captureFile").addEventListener("change", event => {
     const file = event.target.files?.[0]; if (!file) return;
     if (!file.type.startsWith("image/")) { $("ocrStatus").textContent = "Elige una imagen JPG, PNG o similar."; return; }
-    currentImage = file; $("capturePreview").src = URL.createObjectURL(file); $("capturePreviewWrap").hidden = false;
-    $("readImageBtn").disabled = false; $("ocrStatus").textContent = `Imagen lista: ${file.name}. La lectura se hará en este navegador.`;
+    if (currentImageUrl) URL.revokeObjectURL(currentImageUrl);
+    currentImageUrl = URL.createObjectURL(file);
+    captureSelections = [];
+    $("capturePreviewWrap").hidden = false;
+    $("readImageBtn").disabled = true;
+    $("ocrStatus").textContent = "Abriendo foto para mostrarla completa…";
+    currentImage = new Image();
+    currentImage.onload = () => {
+      drawCaptureImage();
+      $("readImageBtn").disabled = false;
+      $("ocrStatus").textContent = `Foto lista: ${file.name}. Arrastra sobre una zona para seleccionarla o lee toda la imagen.`;
+    };
+    currentImage.onerror = () => {
+      currentImage = null;
+      $("ocrStatus").textContent = "No se pudo mostrar esta imagen. Intenta guardarla como JPG o PNG y selecciónala de nuevo.";
+    };
+    currentImage.src = currentImageUrl;
   });
   $("readImageBtn").addEventListener("click", async () => {
     if (!currentImage) return;
     if (!window.Tesseract) { $("ocrStatus").textContent = "No se pudo cargar el lector OCR. Pega el texto manualmente o intenta más tarde."; return; }
     $("readImageBtn").disabled = true; $("ocrStatus").textContent = "Leyendo imagen en el navegador…";
     try {
-      const result = await window.Tesseract.recognize(currentImage, "spa", { logger: message => {
+      const result = await window.Tesseract.recognize(captureImageForOCR(), "spa", { logger: message => {
         if (message.status === "recognizing text" && Number.isFinite(message.progress)) $("ocrStatus").textContent = `Leyendo texto… ${Math.round(message.progress * 100)}%`;
       }});
       $("ocrText").value = result.data.text.trim();
