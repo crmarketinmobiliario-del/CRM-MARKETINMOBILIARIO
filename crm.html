@@ -48,7 +48,8 @@
     </div>
     <div class="intro-actions">
       <button id="captureBtn" class="button button-outline" type="button">Leer captura o foto</button>
-      <button id="newBtn" class="button button-gold" type="button">+ Nuevo contacto</button>
+      <button id="newBtn" class="button button-gold" type="button" hidden>+ Nuevo cliente</button>
+      <button id="newPropertyBtn" class="button button-gold" type="button" hidden>+ Nueva propiedad</button>
     </div>
   </section>
 
@@ -59,15 +60,19 @@
     <article class="stat-card"><span>Entregas próximas</span><strong id="statDelivery">0</strong></article>
   </section>
 
-  <nav class="tabs" aria-label="Secciones del CRM">
-    <button class="tab active" data-view="leads" type="button">Contactos</button>
+  <nav class="tabs main-tabs" aria-label="Secciones del CRM">
+    <button class="tab active" data-view="properties" type="button">Propiedades</button>
+    <button class="tab" data-view="buyers" type="button">Compradores</button>
+    <button class="tab" data-view="sellers" type="button">Vendedores</button>
+    <button class="tab" data-view="investors" type="button">Inversionistas</button>
     <button class="tab" data-view="calendar" type="button">Calendario</button>
   </nav>
 
-  <section id="leadsView" class="view active">
+  <section id="leadsView" class="view" hidden>
     <div class="section-head">
-      <div><p class="eyebrow">DIRECTORIO</p><h2>Contactos</h2></div>
+      <div><p id="directoryEyebrow" class="eyebrow">DIRECTORIO DE COMPRADORES</p><h2 id="directoryTitle">Compradores</h2></div>
       <div class="view-tools">
+        <button id="newClientInSectionBtn" class="button button-gold" type="button" hidden>+ Agregar comprador</button>
         <button id="exportBtn" class="button button-quiet" type="button">Respaldar datos</button>
         <label class="button button-quiet import-label" for="importFile">Importar respaldo</label>
         <input id="importFile" type="file" accept="application/json,.json" hidden>
@@ -76,7 +81,6 @@
     <div class="filters">
       <label class="search-wrap"><span class="sr-only">Buscar</span><input id="searchInput" type="search" placeholder="Buscar nombre, teléfono, email o zona"></label>
       <select id="operationFilter" aria-label="Filtrar por operación"><option value="">Todas las operaciones</option><option>Compra</option><option>Venta</option><option>Renta</option><option>Aportación</option></select>
-      <select id="clientFilter" aria-label="Filtrar por tipo de cliente"><option value="">Todos los clientes</option><option>Comprador</option><option>Propietario vendedor</option><option>Busca renta</option><option>Ofrece renta</option><option>Aportante o inversionista</option></select>
       <select id="stageFilter" aria-label="Filtrar por etapa"><option value="">Todas las etapas</option></select>
     </div>
     <div id="leadList" class="lead-list"></div>
@@ -85,6 +89,15 @@
       <p>Agrega un contacto o lee una captura de Messenger, WhatsApp o una foto de tu libreta.</p>
       <button class="button button-gold" id="emptyNewBtn" type="button">Agregar primer contacto</button>
     </div>
+  </section>
+
+  <section id="propertiesView" class="view active">
+    <div class="section-head"><div><p class="eyebrow">INVENTARIO INMOBILIARIO</p><h2>Propiedades</h2></div><button id="propertyAddBtn" class="button button-gold" type="button">+ Nueva propiedad</button></div>
+    <div class="property-operation-tabs" aria-label="Filtrar propiedades por operación"><button class="property-op active" data-property-operation="Venta" type="button">En venta</button><button class="property-op" data-property-operation="Renta" type="button">En renta</button></div>
+    <div class="property-type-tabs" aria-label="Filtrar por tipo de propiedad"><button class="property-type active" data-property-type="" type="button">Todas</button><button class="property-type" data-property-type="Departamento" type="button">Departamentos</button><button class="property-type" data-property-type="Casa" type="button">Casas</button><button class="property-type" data-property-type="Terreno" type="button">Terrenos</button><button class="property-type" data-property-type="Hectárea" type="button">Hectáreas</button></div>
+    <div class="property-search"><input id="propertySearch" type="search" placeholder="Buscar por nombre, zona o propietario" aria-label="Buscar propiedades"></div>
+    <div id="propertyList" class="property-list"></div>
+    <div id="emptyPropertyState" class="empty-state"><span class="empty-mark">RM</span><h3>Aún no hay propiedades en este grupo</h3><p>Agrega el inmueble para que aparezca aquí con su foto y ficha completa.</p><button class="button button-gold" id="emptyPropertyAddBtn" type="button">Agregar propiedad</button></div>
   </section>
 
   <section id="calendarView" class="view" hidden>
@@ -131,6 +144,32 @@
     </div>
     <div id="formError" class="form-error" role="alert"></div>
     <div class="dialog-actions"><button class="button button-quiet" type="button" data-close="leadDialog">Cancelar</button><button class="button button-gold" type="submit">Guardar contacto</button></div>
+  </form>
+</dialog>
+
+<dialog id="propertyDialog" class="dialog property-dialog">
+  <form id="propertyForm" method="dialog">
+    <div class="dialog-head"><div><p class="eyebrow">FICHA DE PROPIEDAD</p><h2 id="propertyDialogTitle">Nueva propiedad</h2></div><button class="icon-button close-button" type="button" data-close="propertyDialog" aria-label="Cerrar">×</button></div>
+    <input id="propertyId" type="hidden">
+    <div class="form-grid">
+      <label class="span-2">Nombre o título<input id="propertyTitle" required placeholder="Ej. Casa con alberca en Nuevo Nayarit"></label>
+      <label>Operación<select id="propertyOperation" required><option>Venta</option><option>Renta</option></select></label>
+      <label>Tipo de inmueble<select id="propertyKind" required><option>Departamento</option><option>Casa</option><option>Terreno</option><option>Hectárea</option></select></label>
+      <label>Precio en pesos<input id="propertyPrice" type="number" min="0" step="1000" required placeholder="Ej. 2500000"></label>
+      <label>Superficie<input id="propertySurface" type="number" min="0" step="0.01" placeholder="Ej. 180"></label>
+      <label>Unidad<select id="propertySurfaceUnit"><option>m²</option><option>ha</option></select></label>
+      <label>Ciudad / zona<input id="propertyZone" required placeholder="Ej. Tepic, Nuevo Nayarit"></label>
+      <label class="span-2">Domicilio o ubicación<input id="propertyAddress" placeholder="Colonia, calle o referencias"></label>
+      <label>Propietario<select id="propertyOwner"><option value="">Selecciona propietario</option></select></label>
+      <label>Etapa<select id="propertyStatus"><option>Revisión</option><option>Aceptación y firma</option><option>Promoción</option><option>Entrega</option></select></label>
+      <label class="span-2 check-row"><input id="propertyTitleReviewed" type="checkbox"><span>Titularidad y documentos base revisados</span></label>
+      <label class="span-2 check-row"><input id="propertyAgreementSigned" type="checkbox"><span>Convenio de promoción y comisión firmado</span></label>
+      <label class="span-2">Foto principal<input id="propertyPhoto" type="file" accept="image/*" capture="environment"></label>
+      <div id="propertyPhotoPreview" class="property-photo-preview span-2" hidden></div>
+      <label class="span-2">Descripción y observaciones<textarea id="propertyDescription" rows="4" placeholder="Características y detalles del inmueble"></textarea></label>
+      <p id="propertyFormError" class="form-error span-2" role="alert"></p>
+    </div>
+    <div class="dialog-actions"><button class="button button-quiet" type="button" data-close="propertyDialog">Cancelar</button><button class="button button-gold" type="submit">Guardar propiedad</button></div>
   </form>
 </dialog>
 

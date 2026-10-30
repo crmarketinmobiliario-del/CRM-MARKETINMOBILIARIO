@@ -4,14 +4,22 @@
   const CLIENT_STAGES = ["Interés", "Selección", "Trámite", "Entrega"];
   const PROPERTY_STAGES = ["Revisión", "Aceptación y firma del convenio de promoción y comisión", "Promoción", "Entrega"];
   const DB_NAME = "torrez-maldonado-crm";
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   const CLOUD_TABLE = "crm_leads";
+  const PROPERTIES_TABLE = "crm_properties";
+  const PHOTO_BUCKET = "crm-property-photos";
   let supabaseClient = null;
   let currentUser = null;
   let activeAuthMode = "login";
   let appliedAuthUserId = null;
   let dbPromise;
   let leads = [];
+  let properties = [];
+  let currentSection = "properties";
+  let propertyOperationFilter = "Venta";
+  let propertyTypeFilter = "";
+  let propertyPhotoDataUrl = "";
+  let propertyPhotoCache = new Map();
   let selectedDay = startOfDay(new Date());
   let visibleMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   let currentImage = null;
@@ -35,6 +43,7 @@
       request.onupgradeneeded = () => {
         const database = request.result;
         if (!database.objectStoreNames.contains("leads")) database.createObjectStore("leads", { keyPath: "id" });
+        if (!database.objectStoreNames.contains("properties")) database.createObjectStore("properties", { keyPath: "id" });
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error || new Error("No se pudo abrir la base local."));
@@ -47,6 +56,33 @@
       const request = database.transaction("leads", "readonly").objectStore("leads").getAll();
       request.onsuccess = () => resolve(request.result || []);
       request.onerror = () => reject(request.error);
+    });
+  }
+  async function getAllProperties() {
+    const database = await openDB();
+    return new Promise((resolve, reject) => {
+      const request = database.transaction("properties", "readonly").objectStore("properties").getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  }
+  async function saveLocalProperty(property) {
+    const database = await openDB();
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction("properties", "readwrite");
+      transaction.objectStore("properties").put(property);
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error || new Error("No se pudo guardar la propiedad."));
+    });
+  }
+  async function putManyProperties(records) {
+    const database = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction("properties", "readwrite");
+      const store = transaction.objectStore("properties");
+      records.forEach(record => store.put(record));
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error || new Error("No se pudieron guardar las propiedades."));
     });
   }
   async function putLead(lead) {
@@ -158,6 +194,102 @@
       lastContactAt: row.last_contact_at || "", archived: Boolean(row.archived), createdAt: row.created_at, updatedAt: row.updated_at
     };
   }
+  function toDatabaseProperty(property) {
+    return {
+      id: property.id,
+      owner_id: currentUser.id,
+      title: property.title,
+      operation: property.operation,
+      property_type: property.propertyType,
+      price: Number(property.price) || 0,
+      surface: property.surface === "" ? null : Number(property.surface),
+      surface_unit: property.surfaceUnit || "m²",
+      zone: property.zone || "",
+      address: property.address || "",
+      owner_lead_id: property.ownerLeadId || null,
+      status: property.status || "En revisión",
+      title_reviewed: Boolean(property.titleReviewed),
+      agreement_signed: Boolean(property.agreementSigned),
+      photo_path: property.photoPath || null,
+      description: property.description || "",
+      archived: Boolean(property.archived),
+      created_at: property.createdAt || new Date().toISOString(),
+      updated_at: property.updatedAt || new Date().toISOString()
+    };
+  }
+  function fromDatabaseProperty(row) {
+    return {
+      id: row.id, ownerId: row.owner_id, title: row.title || "", operation: row.operation,
+      propertyType: row.property_type || "Casa", price: Number(row.price) || 0,
+      surface: row.surface == null ? "" : String(row.surface), surfaceUnit: row.surface_unit || "m²",
+      zone: row.zone || "", address: row.address || "", ownerLeadId: row.owner_lead_id || "",
+      status: row.status || "Revisión", titleReviewed:Boolean(row.title_reviewed), agreementSigned:Boolean(row.agreement_signed),
+      photoPath: row.photo_path || "", photoDataUrl: "",
+      description: row.description || "", archived: Boolean(row.archived),
+      createdAt: row.created_at, updatedAt: row.updated_at
+    };
+  }
+  async function uploadPropertyPhoto(property) {
+    if (!property.photoDataUrl || !currentUser) return property;
+    const blob = await fetch(property.photoDataUrl).then(response => response.blob());
+    const path = `${currentUser.id}/${property.id}.jpg`;
+    const { error } = await supabaseClient.storage.from(PHOTO_BUCKET).upload(path, blob, { upsert:true, contentType:"image/jpeg", cacheControl:"3600" });
+    if (error) throw error;
+    property.photoPath = path;
+    return property;
+  }
+  async function putProperty(property) {
+    if (currentUser) property.ownerId = currentUser.id;
+    property.updatedAt = new Date().toISOString();
+    await saveLocalProperty(property);
+    if (!currentUser || !navigator.onLine) return { synced:false };
+    try {
+      await uploadPropertyPhoto(property);
+      await saveLocalProperty(property);
+      const { error } = await supabaseClient.from(PROPERTIES_TABLE).upsert(toDatabaseProperty(property), { onConflict:"id" });
+      if (error) throw error;
+      return { synced:true };
+    } catch (error) { return { synced:false, error }; }
+  }
+  async function signedPropertyPhoto(property) {
+    if (property.photoDataUrl) return property.photoDataUrl;
+    if (!property.photoPath || !supabaseClient) return "";
+    const cached = propertyPhotoCache.get(property.photoPath);
+    if (cached && cached.expires > Date.now()) return cached.url;
+    const { data, error } = await supabaseClient.storage.from(PHOTO_BUCKET).createSignedUrl(property.photoPath, 3600);
+    if (error) return "";
+    propertyPhotoCache.set(property.photoPath, { url:data.signedUrl, expires:Date.now()+3500000 });
+    return data.signedUrl;
+  }
+  async function syncPropertiesWithCloud() {
+    const stored = await getAllProperties();
+    const local = stored.filter(property => !property.ownerId || property.ownerId === currentUser.id)
+      .map(property => ({ ...property, id:isUuid(property.id) ? property.id : uuid(), ownerId:currentUser.id }));
+    if (!navigator.onLine) {
+      if (local.length) await putManyProperties(local);
+      properties = local;
+      return false;
+    }
+    const { data:initialRows, error:initialError } = await supabaseClient.from(PROPERTIES_TABLE).select("*");
+    if (initialError) throw initialError;
+    const cloudById = new Map((initialRows || []).map(row => [row.id, fromDatabaseProperty(row)]));
+    const pending = local.filter(property => {
+      const cloud = cloudById.get(property.id);
+      return !cloud || recordTime(property.updatedAt) > recordTime(cloud.updatedAt) || Boolean(property.photoDataUrl && !property.photoPath);
+    });
+    for (const property of pending) {
+      await uploadPropertyPhoto(property);
+      const { error } = await supabaseClient.from(PROPERTIES_TABLE).upsert(toDatabaseProperty(property), { onConflict:"id" });
+      if (error) throw error;
+    }
+    const { data:finalRows, error:finalError } = await supabaseClient.from(PROPERTIES_TABLE).select("*").order("updated_at", { ascending:false });
+    if (finalError) throw finalError;
+    const synced = (finalRows || []).map(fromDatabaseProperty);
+    const otherUsers = stored.filter(property => property.ownerId && property.ownerId !== currentUser.id);
+    await putManyProperties([...otherUsers, ...local.filter(property => pending.some(item => item.id === property.id)), ...synced]);
+    properties = synced;
+    return true;
+  }
   function recordTime(value) { const time = Date.parse(value || ""); return Number.isFinite(time) ? time : 0; }
   async function syncWithCloud() {
     const stored = await getAllLeads();
@@ -166,6 +298,7 @@
     if (!navigator.onLine) {
       if (local.length) await putMany(local);
       leads = local;
+      properties = (await getAllProperties()).filter(property => !property.ownerId || property.ownerId === currentUser.id);
       return false;
     }
     const { data: initialRows, error: initialError } = await supabaseClient.from(CLOUD_TABLE).select("*");
@@ -185,6 +318,11 @@
     const otherUsers = stored.filter(lead => lead.ownerId && lead.ownerId !== currentUser.id);
     await putMany([...otherUsers, ...synced]);
     leads = synced;
+    try { await syncPropertiesWithCloud(); }
+    catch (error) {
+      properties = (await getAllProperties()).filter(property => !property.ownerId || property.ownerId === currentUser.id);
+      setStatus(`Contactos sincronizados. No se pudieron cargar propiedades: ${error.message}`);
+    }
     return true;
   }
   async function updateAuthView(session) {
@@ -204,7 +342,7 @@
       receiveReaderCapture();
     } else {
       leads = [];
-      renderStats(); renderLeads(); renderCalendar();
+      properties = []; renderStats(); renderLeads(); void renderProperties(); renderCalendar();
     }
   }
   async function initializeSupabase() {
@@ -267,14 +405,26 @@
     fillStageFilter();
     const query = $("searchInput").value.trim().toLowerCase();
     const op = $("operationFilter").value;
-    const clientType = $("clientFilter").value;
     const stage = $("stageFilter").value;
+    const config = {
+      buyers:{ title:"Compradores", eyebrow:"DIRECTORIO DE COMPRADORES", types:["Comprador","Busca renta"], button:"+ Agregar comprador", defaultType:"Comprador" },
+      sellers:{ title:"Vendedores", eyebrow:"PROPIETARIOS Y RENTAS", types:["Propietario vendedor","Ofrece renta"], button:"+ Agregar vendedor", defaultType:"Propietario vendedor" },
+      investors:{ title:"Inversionistas", eyebrow:"APORTANTES Y SOCIOS", types:["Aportante o inversionista"], button:"+ Agregar inversionista", defaultType:"Aportante o inversionista" }
+    }[currentSection] || { title:"Compradores", eyebrow:"DIRECTORIO DE COMPRADORES", types:["Comprador","Busca renta"], button:"+ Agregar comprador", defaultType:"Comprador" };
+    $("directoryTitle").textContent = config.title;
+    $("directoryEyebrow").textContent = config.eyebrow;
+    $("newClientInSectionBtn").textContent = config.button;
+    $("newBtn").hidden = true;
+    $("newPropertyBtn").hidden = true;
+    $("newClientInSectionBtn").hidden = currentSection === "properties" || currentSection === "calendar";
     const records = activeLeads().filter(lead => {
       const searchable = [lead.name, lead.phone, lead.email, lead.zone, lead.comments, lead.source].join(" ").toLowerCase();
-      return (!query || searchable.includes(query)) && (!op || lead.operation === op) && (!clientType || lead.clientType === clientType) && (!stage || lead.stage === stage);
-    }).sort((a,b) => (a.nextContact || "9999").localeCompare(b.nextContact || "9999"));
+      return config.types.includes(lead.clientType) && (!query || searchable.includes(query)) && (!op || lead.operation === op) && (!stage || lead.stage === stage);
+    }).sort((a,b) => (a.name || "").localeCompare(b.name || "", "es"));
     const list = $("leadList");
-    $("emptyState").hidden = records.length > 0 || activeLeads().length > 0;
+    $("emptyState").hidden = records.length > 0;
+    $("emptyState").querySelector("h3").textContent = `Aún no hay ${config.title.toLowerCase()} en esta sección`;
+    $("emptyState").querySelector("p").textContent = "Agrega una ficha o ajusta la búsqueda para ver registros.";
     list.innerHTML = records.map(lead => {
       const next = lead.nextContact ? localDateTime(lead.nextContact) : "Sin fecha";
       const target = lead.targetDate ? localDate(lead.targetDate) : "Sin fecha prevista";
@@ -299,6 +449,74 @@
       if (!saved.synced) setStatus(saved.error ? `Cambio guardado localmente; falta sincronizar: ${saved.error.message}` : "Cambio guardado localmente; se sincronizará al reconectar.");
     }));
   }
+  function moneyMXN(value) {
+    return new Intl.NumberFormat("es-MX", { style:"currency", currency:"MXN", maximumFractionDigits:0 }).format(Number(value) || 0);
+  }
+  async function renderProperties() {
+    const query = $("propertySearch").value.trim().toLowerCase();
+    const records = properties.filter(property => !property.archived && property.operation === propertyOperationFilter &&
+      (!propertyTypeFilter || property.propertyType === propertyTypeFilter) &&
+      (!query || [property.title, property.zone, property.address, property.description, ownerName(property.ownerLeadId)].join(" ").toLowerCase().includes(query)))
+      .sort((a,b) => (a.title || "").localeCompare(b.title || "", "es"));
+    $("propertyList").innerHTML = "";
+    $("emptyPropertyState").hidden = records.length > 0;
+    const cards = await Promise.all(records.map(async property => {
+      const photo = await signedPropertyPhoto(property);
+      const image = photo ? `<img src="${esc(photo)}" alt="Foto de ${esc(property.title)}" loading="lazy">` : `<div class="property-placeholder" aria-hidden="true">RM</div>`;
+      return `<article class="property-card" data-property-open="${esc(property.id)}"><div class="property-card-photo">${image}</div><div class="property-card-body"><div class="property-card-tags"><span class="pill">${esc(property.propertyType)}</span><span class="pill">${esc(property.operation)}</span></div><h3>${esc(property.title)}</h3><p class="property-card-zone">${esc(property.zone)}</p><strong class="property-price">${moneyMXN(property.price)}</strong><small>${esc(property.surface || "Superficie por definir")} ${esc(property.surfaceUnit || "m²")} · ${esc(property.status || "En revisión")}</small><small>Propietario: ${esc(ownerName(property.ownerLeadId) || "Sin asignar")}</small></div><button class="small-action property-edit" type="button" data-property-edit="${esc(property.id)}" aria-label="Abrir ficha de ${esc(property.title)}">↗</button></article>`;
+    }));
+    $("propertyList").innerHTML = cards.join("");
+    $("propertyList").querySelectorAll("[data-property-open]").forEach(card => card.addEventListener("click", event => {
+      if (event.target.closest("button")) return;
+      editProperty(card.dataset.propertyOpen);
+    }));
+    $("propertyList").querySelectorAll("[data-property-edit]").forEach(button => button.addEventListener("click", () => editProperty(button.dataset.propertyEdit)));
+  }
+  function ownerName(id) { return leads.find(lead => lead.id === id)?.name || ""; }
+  function setPropertyOperation(operation) {
+    propertyOperationFilter = operation;
+    document.querySelectorAll("[data-property-operation]").forEach(button => button.classList.toggle("active", button.dataset.propertyOperation === operation));
+    renderProperties();
+  }
+  function openNewProperty() {
+    const owners = activeLeads().filter(lead => ["Propietario vendedor","Ofrece renta"].includes(lead.clientType));
+    if (!owners.length) {
+      setStatus("Primero agrega al propietario en la sección Vendedores; después podrás ligarlo a la propiedad.");
+      setCurrentSection("sellers");
+      return;
+    }
+    $("propertyForm").reset(); $("propertyId").value = ""; $("propertyFormError").textContent = "";
+    $("propertyDialogTitle").textContent = "Nueva propiedad";
+    $("propertyOperation").value = propertyOperationFilter;
+    $("propertyStatus").value = "Revisión";
+    $("propertyTitleReviewed").checked = false; $("propertyAgreementSigned").checked = false;
+    $("propertyOwner").innerHTML = `<option value="">Selecciona propietario</option>` + owners.map(owner => `<option value="${esc(owner.id)}">${esc(owner.name)} · ${esc(owner.phone || "sin teléfono")}</option>`).join("");
+    propertyPhotoDataUrl = ""; $("propertyPhotoPreview").hidden = true; $("propertyPhotoPreview").innerHTML = "";
+    $("propertyDialog").showModal();
+  }
+  function editProperty(id) {
+    const property = properties.find(item => item.id === id); if (!property) return;
+    $("propertyForm").reset(); $("propertyFormError").textContent = "";
+    $("propertyDialogTitle").textContent = "Ficha de propiedad";
+    $("propertyId").value = property.id; $("propertyTitle").value = property.title;
+    $("propertyOperation").value = property.operation; $("propertyKind").value = property.propertyType;
+    $("propertyPrice").value = property.price; $("propertySurface").value = property.surface || "";
+    $("propertySurfaceUnit").value = property.surfaceUnit || "m²"; $("propertyZone").value = property.zone;
+    $("propertyAddress").value = property.address || ""; $("propertyStatus").value = property.status || "Revisión";
+    $("propertyDescription").value = property.description || "";
+    $("propertyTitleReviewed").checked = Boolean(property.titleReviewed);
+    $("propertyAgreementSigned").checked = Boolean(property.agreementSigned);
+    const owners = activeLeads().filter(lead => ["Propietario vendedor","Ofrece renta"].includes(lead.clientType));
+    $("propertyOwner").innerHTML = `<option value="">Selecciona propietario</option>` + owners.map(owner => `<option value="${esc(owner.id)}">${esc(owner.name)} · ${esc(owner.phone || "sin teléfono")}</option>`).join("");
+    $("propertyOwner").value = property.ownerLeadId || "";
+    propertyPhotoDataUrl = property.photoDataUrl || "";
+    signedPropertyPhoto(property).then(photo => {
+      const preview = $("propertyPhotoPreview");
+      if (photo) { preview.innerHTML = `<img src="${esc(photo)}" alt="Foto de la propiedad">`; preview.hidden = false; }
+      else { preview.innerHTML = ""; preview.hidden = true; }
+    });
+    $("propertyDialog").showModal();
+  }
   async function refresh() {
     try {
       let synced = false;
@@ -307,12 +525,14 @@
         catch (error) {
           const stored = await getAllLeads();
           leads = stored.filter(lead => !lead.ownerId || lead.ownerId === currentUser.id).map(lead => ({ ...lead, ownerId: currentUser.id }));
+          properties = (await getAllProperties()).filter(property => !property.ownerId || property.ownerId === currentUser.id);
           setStatus(`No se pudo sincronizar: ${error.message}. Los datos locales se conservan.`);
         }
       } else {
         leads = [];
+        properties = [];
       }
-      renderStats(); renderLeads(); renderCalendar();
+      renderStats(); renderLeads(); void renderProperties(); renderCalendar();
       if (currentUser && synced) setStatus("Sincronizado con Supabase.");
       else if (currentUser && !navigator.onLine) setStatus("Sin conexión: los cambios quedan guardados aquí y se sincronizarán al reconectar.");
     } catch (error) { setStatus(error.message); }
@@ -330,6 +550,11 @@
     if (prefill.propertyType) $("propertyType").value = prefill.propertyType;
     if (prefill.creditType) $("creditType").value = prefill.creditType;
     if (prefill.clientType) $("clientType").value = prefill.clientType;
+    if (!prefill.clientType && currentSection === "sellers") $("clientType").value = "Propietario vendedor";
+    if (!prefill.clientType && currentSection === "investors") $("clientType").value = "Aportante o inversionista";
+    if (!prefill.clientType && currentSection === "buyers") $("clientType").value = "Comprador";
+    if (!prefill.operation && ["sellers","investors"].includes(currentSection)) $("operation").value = currentSection === "sellers" ? "Venta" : "Aportación";
+    if (!prefill.operation && currentSection === "buyers") $("operation").value = "Compra";
     fillStageOptions();
     $("leadDialog").showModal();
     if (prefill.name) $("clientType").focus(); else $("name").focus();
@@ -387,6 +612,86 @@
     const saved = await putLead(lead); await refresh();
     if (!saved.synced) setStatus(saved.error ? `Archivado localmente; falta sincronizar: ${saved.error.message}` : "Archivado localmente; se sincronizará al reconectar.");
   }
+
+  function setCurrentSection(section) {
+    currentSection = section;
+    const property = section === "properties";
+    const calendar = section === "calendar";
+    $("leadsView").hidden = property || calendar;
+    $("propertiesView").hidden = !property;
+    $("calendarView").hidden = !calendar;
+    $("leadsView").classList.toggle("active", !property && !calendar);
+    $("propertiesView").classList.toggle("active", property);
+    $("calendarView").classList.toggle("active", calendar);
+    document.querySelectorAll(".main-tabs .tab").forEach(tab => tab.classList.toggle("active", tab.dataset.view === section));
+    $("newBtn").hidden = true;
+    $("newPropertyBtn").hidden = true;
+    $("newClientInSectionBtn").hidden = property || calendar;
+    if (property) renderProperties();
+    else if (calendar) renderCalendar();
+    else renderLeads();
+  }
+  function fileToJpegDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      const url = URL.createObjectURL(file);
+      image.onload = () => {
+        const scale = Math.min(1, 1800 / Math.max(image.naturalWidth, image.naturalHeight));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL("image/jpeg", .84));
+      };
+      image.onerror = () => { URL.revokeObjectURL(url); reject(new Error("No se pudo abrir la foto.")); };
+      image.src = url;
+    });
+  }
+  $("propertyPhoto").addEventListener("change", async event => {
+    const file = event.target.files?.[0]; if (!file) return;
+    try {
+      propertyPhotoDataUrl = await fileToJpegDataUrl(file);
+      const preview = $("propertyPhotoPreview");
+      preview.innerHTML = `<img src="${propertyPhotoDataUrl}" alt="Vista previa de la propiedad">`;
+      preview.hidden = false;
+    } catch (error) { $("propertyFormError").textContent = error.message; }
+  });
+  $("propertyKind").addEventListener("change", () => {
+    if ($("propertyKind").value === "Hectárea") $("propertySurfaceUnit").value = "ha";
+    else if ($("propertySurfaceUnit").value === "ha") $("propertySurfaceUnit").value = "m²";
+  });
+  $("propertyForm").addEventListener("submit", async event => {
+    event.preventDefault(); $("propertyFormError").textContent = "";
+    const id = $("propertyId").value || uuid();
+    const previous = properties.find(property => property.id === id);
+    const property = {
+      id, ownerId:currentUser?.id || "", title:$("propertyTitle").value.trim(), operation:$("propertyOperation").value,
+      propertyType:$("propertyKind").value, price:Number($("propertyPrice").value) || 0,
+      surface:$("propertySurface").value, surfaceUnit:$("propertySurfaceUnit").value,
+      zone:$("propertyZone").value.trim(), address:$("propertyAddress").value.trim(), ownerLeadId:$("propertyOwner").value,
+      status:$("propertyStatus").value, titleReviewed:$("propertyTitleReviewed").checked,
+      agreementSigned:$("propertyAgreementSigned").checked,
+      photoPath:previous?.photoPath || "", photoDataUrl:propertyPhotoDataUrl || previous?.photoDataUrl || "",
+      description:$("propertyDescription").value.trim(), archived:false,
+      createdAt:previous?.createdAt || new Date().toISOString(), updatedAt:new Date().toISOString()
+    };
+    if (!property.ownerLeadId) { $("propertyFormError").textContent = "Selecciona al propietario para vincular esta propiedad con su expediente."; return; }
+    if (["Propietario vendedor","Ofrece renta"].includes(leads.find(lead => lead.id === property.ownerLeadId)?.clientType) === false) {
+      $("propertyFormError").textContent = "El contacto seleccionado debe estar registrado como vendedor o propietario que ofrece renta."; return;
+    }
+    if (["Promoción","Entrega"].includes(property.status) && (!property.titleReviewed || !property.agreementSigned)) {
+      $("propertyFormError").textContent = "Antes de promover o cerrar, marca la revisión de titularidad y el convenio firmado."; return;
+    }
+    try {
+      const saved = await putProperty(property);
+      properties = await getAllProperties();
+      properties = properties.filter(item => !item.ownerId || !currentUser || item.ownerId === currentUser.id);
+      $("propertyDialog").close(); renderProperties();
+      if (!saved.synced) setStatus(saved.error ? `Propiedad guardada en este dispositivo; falta sincronizar: ${saved.error.message}` : "Propiedad guardada en este dispositivo; se sincronizará al reconectar.");
+      else setStatus("Propiedad guardada y sincronizada.");
+    } catch (error) { $("propertyFormError").textContent = error.message || "No se pudo guardar la propiedad."; }
+  });
 
   function extractHints(text) {
     const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
@@ -708,20 +1013,26 @@
   });
 
   $("newBtn").addEventListener("click", () => openNewLead());
+  $("newClientInSectionBtn").addEventListener("click", () => openNewLead());
   $("emptyNewBtn").addEventListener("click", () => openNewLead());
+  $("newPropertyBtn").addEventListener("click", openNewProperty);
+  $("propertyAddBtn").addEventListener("click", openNewProperty);
+  $("emptyPropertyAddBtn").addEventListener("click", openNewProperty);
   $("clientType").addEventListener("change", () => fillStageOptions());
   $("operation").addEventListener("change", () => { const rent = $("operation").value === "Renta"; $("rentStart").closest("label").style.opacity = rent ? "1" : ".65"; $("rentEnd").closest("label").style.opacity = rent ? "1" : ".65"; });
   document.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", () => $(button.dataset.close).close()));
-  document.querySelectorAll(".tab").forEach(button => button.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(tab => tab.classList.toggle("active", tab === button));
-    const calendar = button.dataset.view === "calendar";
-    $("leadsView").hidden = calendar; $("calendarView").hidden = !calendar;
-    $("leadsView").classList.toggle("active", !calendar); $("calendarView").classList.toggle("active", calendar);
-    if (calendar) renderCalendar();
+  document.querySelectorAll(".main-tabs .tab").forEach(button => button.addEventListener("click", () => setCurrentSection(button.dataset.view)));
+  ["searchInput","operationFilter","stageFilter"].forEach(id => $(id).addEventListener("input", renderLeads));
+  $("propertySearch").addEventListener("input", renderProperties);
+  document.querySelectorAll("[data-property-operation]").forEach(button => button.addEventListener("click", () => setPropertyOperation(button.dataset.propertyOperation)));
+  document.querySelectorAll("[data-property-type]").forEach(button => button.addEventListener("click", () => {
+    propertyTypeFilter = button.dataset.propertyType;
+    document.querySelectorAll("[data-property-type]").forEach(item => item.classList.toggle("active", item === button));
+    renderProperties();
   }));
-  ["searchInput","operationFilter","clientFilter","stageFilter"].forEach(id => $(id).addEventListener("input", renderLeads));
   $("exportBtn").addEventListener("click", async () => {
-    const data = { version:1, exportedAt:new Date().toISOString(), leads };
+    const storedProperties = await getAllProperties();
+    const data = { version:2, exportedAt:new Date().toISOString(), leads, properties:storedProperties.filter(property => !currentUser || !property.ownerId || property.ownerId === currentUser.id) };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
     const url = URL.createObjectURL(blob); const link=document.createElement("a"); link.href=url; link.download=`respaldo-crm-${toDateInput(new Date())}.json`; link.click(); URL.revokeObjectURL(url); setStatus("Respaldo descargado.");
   });
@@ -732,7 +1043,8 @@
       const rows = Array.isArray(parsed) ? parsed : parsed.leads;
       if (!Array.isArray(rows)) throw new Error("El archivo no contiene una lista de contactos.");
       const records = rows.filter(row => row && row.name).map(row => ({ ...row, id:isUuid(row.id) ? row.id : uuid(), createdAt:row.createdAt || new Date().toISOString(), updatedAt:new Date().toISOString() }));
-      await putMany(records); await refresh(); setStatus(`Respaldo importado: ${records.length} contactos.`);
+      const propertyRows = Array.isArray(parsed.properties) ? parsed.properties.filter(row => row && row.title).map(row => ({ ...row, id:isUuid(row.id) ? row.id : uuid(), createdAt:row.createdAt || new Date().toISOString(), updatedAt:new Date().toISOString() })) : [];
+      await putMany(records); await putManyProperties(propertyRows); await refresh(); setStatus(`Respaldo importado: ${records.length} contactos y ${propertyRows.length} propiedades.`);
     } catch (error) { setStatus(`No se pudo importar: ${error.message}`); }
     finally { event.target.value=""; }
   });
