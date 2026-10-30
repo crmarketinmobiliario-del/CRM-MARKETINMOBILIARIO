@@ -430,9 +430,11 @@
       const target = lead.targetDate ? localDate(lead.targetDate) : "Sin fecha prevista";
       const tags = [lead.operation, lead.clientType, lead.propertyType].filter(Boolean).map(x => `<span class="pill">${esc(x)}</span>`).join("");
       const phone = whatsappNumber(lead.phone);
+      const credit = [lead.creditType, lead.budget ? moneyMXN(lead.budget) : ""].filter(Boolean).join(" · ") || "Sin definir";
       return `<article class="lead-card" data-open="${esc(lead.id)}">
         <div class="lead-main"><h3>${esc(lead.name)}</h3><div>${tags}</div><div class="lead-meta">${esc(lead.zone || "Zona por definir")}${lead.zoneType ? ` · ${esc(lead.zoneType)}` : ""}</div></div>
         <div><div class="lead-label">Contacto</div><div class="lead-value">${esc(lead.phone || "Sin teléfono")}<br>${esc(lead.email || "Sin email")}</div></div>
+        <div><div class="lead-label">Crédito · monto</div><div class="lead-value">${esc(credit)}</div></div>
         <div><div class="lead-label">Próximo seguimiento</div><div class="lead-value">${esc(next)}<br>${esc(lead.nextChannel || "Canal por definir")}</div></div>
         <div><div class="lead-label">Etapa · cierre</div><div class="lead-value"><select class="stage-select" data-stage-id="${esc(lead.id)}" aria-label="Etapa de ${esc(lead.name)}">${stagesFor(lead).map(s => `<option${s === lead.stage ? " selected" : ""}>${esc(s)}</option>`).join("")}</select><div class="lead-meta">Entrega: ${esc(target)}</div></div></div>
         <div class="lead-actions"><button class="small-action" data-edit="${esc(lead.id)}" aria-label="Editar ${esc(lead.name)}" title="Editar">✎</button>${phone ? `<a class="small-action whats" href="https://wa.me/${phone}" target="_blank" rel="noopener" aria-label="Abrir WhatsApp con ${esc(lead.name)}" title="WhatsApp">W</a>` : ""}</div>
@@ -539,7 +541,7 @@
   }
 
   function openNewLead(prefill = {}) {
-    $("leadForm").reset(); $("leadId").value = ""; $("dialogTitle").textContent = "Nuevo contacto"; setFormError("");
+    $("leadForm").reset(); $("leadId").value = ""; $("dialogTitle").textContent = "Nuevo contacto"; $("deleteLeadBtn").hidden = true; setFormError("");
     $("activityBox").hidden = true; $("activityHistory").innerHTML = "";
     $("startDate").value = toDateInput(new Date());
     $("nextChannel").value = "Llamada";
@@ -561,7 +563,7 @@
   }
   function editLead(id) {
     const lead = leads.find(item => item.id === id); if (!lead) return;
-    $("leadForm").reset(); $("dialogTitle").textContent = "Editar contacto"; setFormError("");
+    $("leadForm").reset(); $("dialogTitle").textContent = "Editar contacto"; $("deleteLeadBtn").hidden = false; setFormError("");
     $("leadId").value = lead.id;
     for (const key of ["name","phone","email","clientType","operation","budget","creditType","propertyType","zoneType","zone","source","nextChannel","comments"]) {
       if ($(key)) $(key).value = lead[key] ?? "";
@@ -608,10 +610,13 @@
   });
   async function archiveLead(id) {
     const lead = leads.find(item => item.id === id); if (!lead) return;
+    if (!window.confirm(`¿Eliminar a ${lead.name} de tus listas? La ficha se archivará y dejará de aparecer.`)) return;
     lead.archived = true; lead.updatedAt = new Date().toISOString();
     const saved = await putLead(lead); await refresh();
     if (!saved.synced) setStatus(saved.error ? `Archivado localmente; falta sincronizar: ${saved.error.message}` : "Archivado localmente; se sincronizará al reconectar.");
+    $("leadDialog").close();
   }
+  $("deleteLeadBtn").addEventListener("click", () => { void archiveLead($("leadId").value); });
 
   function setCurrentSection(section) {
     currentSection = section;

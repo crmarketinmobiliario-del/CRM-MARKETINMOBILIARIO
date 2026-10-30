@@ -109,7 +109,7 @@
       <div class="calendar-grid calendar-weekdays"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div>
       <div id="calendarGrid" class="calendar-grid" role="grid" aria-label="Calendario mensual"></div>
     </div>
-    <div class="agenda-card"><div class="agenda-head"><div><p class="eyebrow">DÍA SELECCIONADO</p><h3 id="selectedDateLabel"></h3></div><button id="whatsReminderBtn" class="button button-whatsapp" type="button">Preparar recordatorio en WhatsApp</button></div><div id="dayAgenda" class="day-agenda"></div></div>
+    <div class="agenda-card"><div class="agenda-head"><div><p class="eyebrow">DÍA SELECCIONADO</p><h3 id="selectedDateLabel"></h3></div><button id="whatsReminderBtn" class="button button-whatsapp" type="button">Abrir recordatorio en WhatsApp</button></div><p class="reminder-note">WhatsApp abre el texto listo para enviar; por ahora hay que pulsar Enviar. Para que llegue automáticamente se requiere una integración de WhatsApp Business.</p><div id="dayAgenda" class="day-agenda"></div></div>
   </section>
 
   <footer class="app-footer"><span>Torrez &amp; Maldonado · Bienes raíces</span><span id="saveStatus">Tus datos permanecen en este navegador.</span></footer>
@@ -123,11 +123,11 @@
       <label class="span-2">Nombre<input id="name" name="name" required autocomplete="name" placeholder="Nombre y apellidos"></label>
       <label>Contacto / WhatsApp<input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="+52 322…"></label>
       <label>Email<input id="email" name="email" type="email" autocomplete="email" placeholder="nombre@correo.com"></label>
-      <label>Tipo de cliente<select id="clientType" required><option value="">Selecciona</option><option>Comprador</option><option>Propietario vendedor</option><option>Busca renta</option><option>Ofrece renta</option><option>Aportante o inversionista</option></select></label>
+      <label>Perfil del cliente<select id="clientType" required><option value="">Selecciona</option><option>Comprador</option><option>Propietario vendedor</option><option>Busca renta</option><option>Ofrece renta</option><option>Aportante o inversionista</option></select></label>
       <label>Tipo de operación<select id="operation" required><option value="">Selecciona</option><option>Compra</option><option>Venta</option><option>Renta</option><option>Aportación</option></select></label>
-      <label class="span-2">Monto de crédito o presupuesto de contado (MXN)<input id="budget" type="number" min="0" step="1000" placeholder="Ej. 2500000"></label>
-      <label>Tipo de crédito o pago<select id="creditType"><option value="">No definido</option><option>Infonavit</option><option>FOVISSSTE</option><option>Bancario</option><option>Recursos propios</option></select></label>
-      <label>Interés en<select id="propertyType"><option value="">Por definir</option><option>Casa</option><option>Departamento</option><option>Terreno</option><option>Hectárea</option></select></label>
+      <label>Presupuesto / monto de crédito (MXN)<input id="budget" type="number" min="0" step="1000" placeholder="Ej. 2500000"></label>
+      <label>Tipo de crédito o pago<select id="creditType"><option value="">No definido</option><option>Infonavit</option><option>Infonavit Total</option><option>Cofinavit</option><option>Unamos Créditos</option><option>FOVISSSTE</option><option>Bancario</option><option>Recursos propios</option><option>Otro</option></select></label>
+      <label>Busca<select id="propertyType"><option value="">Por definir</option><option>Casa</option><option>Departamento</option><option>Terreno</option><option>Hectárea</option></select></label>
       <label>Tipo de zona<select id="zoneType"><option value="">Por definir</option><option>Ciudad</option><option>Playa</option><option>Montaña</option><option>Comunidad</option></select></label>
       <label>Zona / ciudad<input id="zone" placeholder="Ej. Tepic, Vallarta, Nuevo Nayarit"></label>
       <label>Origen del contacto<select id="source"><option value="Captura manual">Captura manual</option><option>Libreta</option><option>WhatsApp</option><option>Messenger</option><option>Marketplace</option><option>Referido</option><option>Otro</option></select></label>
@@ -143,7 +143,7 @@
       <label class="span-2 check-row"><input id="waOptIn" type="checkbox"><span>El contacto autorizó recibir mensajes por WhatsApp</span></label>
     </div>
     <div id="formError" class="form-error" role="alert"></div>
-    <div class="dialog-actions"><button class="button button-quiet" type="button" data-close="leadDialog">Cancelar</button><button class="button button-gold" type="submit">Guardar contacto</button></div>
+    <div class="dialog-actions"><button id="deleteLeadBtn" class="button button-danger" type="button" hidden>Eliminar contacto</button><span class="dialog-actions-spacer"></span><button class="button button-quiet" type="button" data-close="leadDialog">Cancelar</button><button class="button button-gold" type="submit">Guardar contacto</button></div>
   </form>
 </dialog>
 
