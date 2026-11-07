@@ -39,3 +39,19 @@ body,.topbar{background:#000}.topbar{border-color:#383838}.lead-card,.property-c
 .button-danger{background:#1b0909;color:#ffd7d2;border:1px solid #a64f46}.button-danger:hover{background:#35100e;border-color:#e0786c}.dialog-actions-spacer{flex:1}.reminder-note{margin:0 0 10px;color:#c6c6c6;font-size:.78rem;line-height:1.5}
 @media(max-width:900px){.lead-card{grid-template-columns:1fr 1fr 1fr;}.lead-actions{grid-column:1/-1;justify-content:flex-start}}
 @media(max-width:620px){.lead-card{grid-template-columns:1fr 1fr;}.lead-main,.lead-actions{grid-column:1/-1}.lead-value{font-size:.84rem}.dialog-actions-spacer{display:none}.dialog-actions{flex-wrap:wrap}.dialog-actions #deleteLeadBtn{order:3;flex-basis:100%}}
+/* Centro de Publicaciones: estilos aislados */
+.publication-dialog{width:min(1100px,calc(100% - 24px))!important;max-width:1100px!important;height:min(94dvh,950px)!important;max-height:94dvh!important;inset:auto!important;margin:auto!important;overflow:auto!important}
+.publication-inner{padding:clamp(15px,3vw,28px)}
+.publication-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.85fr);gap:24px}
+.publication-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
+.publication-fields label{display:flex;flex-direction:column;gap:5px;font-size:.77rem;color:#ddd}
+.publication-fields label:nth-child(n+5){grid-column:1/-1}
+.publication-fields input,.publication-fields select,.publication-fields textarea{width:100%;min-width:0;min-height:42px;padding:10px;border:1px solid #555;border-radius:6px;background:#111;color:#f5f5f2;font:inherit}
+.publication-fields textarea{resize:vertical}
+.publication-fields input:focus,.publication-fields select:focus,.publication-fields textarea:focus{outline:1px solid var(--gold)}
+.publication-preview{min-width:0}
+#pubCanvas{display:block;max-width:100%;width:auto;height:auto;max-height:55vh;margin:auto;border:1px solid #4a4a4a;border-radius:7px;background:#181818}
+#pubStatus{font-size:.8rem;color:var(--gold);min-height:2.5em;line-height:1.5}
+.publication-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.publication-help{font-size:.73rem;color:var(--muted);line-height:1.5;grid-column:1/-1}
+@media(max-width:760px){.publication-dialog{width:100vw!important;max-width:none!important;height:100dvh!important;max-height:none!important}.publication-grid{grid-template-columns:1fr}.publication-fields{grid-template-columns:1fr 1fr}.publication-preview{padding-bottom:24px}#pubCanvas{max-height:48vh}.publication-buttons{grid-template-columns:1fr 1fr}}

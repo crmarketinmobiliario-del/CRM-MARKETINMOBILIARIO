@@ -164,7 +164,8 @@
       <label>Etapa<select id="propertyStatus"><option>Revisión</option><option>Aceptación y firma</option><option>Promoción</option><option>Entrega</option></select></label>
       <label class="span-2 check-row"><input id="propertyTitleReviewed" type="checkbox"><span>Titularidad y documentos base revisados</span></label>
       <label class="span-2 check-row"><input id="propertyAgreementSigned" type="checkbox"><span>Convenio de promoción y comisión firmado</span></label>
-      <label class="span-2">Foto principal<input id="propertyPhoto" type="file" accept="image/*" capture="environment"></label>
+      <div class="span-2"><button id="openPublicationCenter" class="button button-outline" type="button" hidden>✦ Centro de publicaciones</button></div>
+       <label class="span-2">Foto principal<input id="propertyPhoto" type="file" accept="image/*" capture="environment"></label>
       <div id="propertyPhotoPreview" class="property-photo-preview span-2" hidden></div>
       <label class="span-2">Descripción y observaciones<textarea id="propertyDescription" rows="4" placeholder="Características y detalles del inmueble"></textarea></label>
       <p id="propertyFormError" class="form-error span-2" role="alert"></p>
@@ -186,10 +187,46 @@
   <p class="capture-footnote">No se guarda la imagen. Solo se guardan los campos del contacto cuando confirmes la ficha.</p>
 </dialog>
 
+
+<!-- Centro de Publicaciones: módulo independiente; no modifica la ficha ni el CRM -->
+<dialog id="publicationDialog" class="dialog publication-dialog">
+  <div class="publication-inner">
+    <div class="dialog-head"><div><p class="eyebrow">CENTRO DE PUBLICACIONES · TORRES MALDONADO</p><h2 id="pubHeading">Publicar propiedad</h2></div><button class="icon-button" id="pubClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="publication-grid">
+      <div class="publication-fields">
+        <label>Red social<select id="pubNetwork"><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="whatsapp">WhatsApp</option><option value="tiktok">TikTok</option></select></label>
+        <label>Formato<select id="pubFormat"></select></label>
+        <label>Encuadre<select id="pubFit"><option value="contain">Fit · imagen completa</option><option value="cover">Llenar · permite recorte</option></select></label>
+        <label>Código de propiedad<input id="pubCode" placeholder="RM-001" maxlength="24"></label>
+        <label>Título<input id="pubTitle" maxlength="150"></label>
+        <label>Descripción<textarea id="pubCaption" rows="5" placeholder="Describe la propiedad para esta publicación"></textarea></label>
+        <label>Llamado a la acción<input id="pubCta" value="Solicita información y agenda tu visita."></label>
+        <label>Hashtags<input id="pubTags" value="#CasaEnVenta #PuertoVallarta #MarketInmobiliario"></label>
+        <label>Enlace público de la ficha (opcional)<input id="pubUrl" type="url" placeholder="https://..." autocomplete="off"></label>
+        <label>Elegir foto para esta publicación<input id="pubImageFile" type="file" accept="image/*"></label>
+        <p class="publication-help">Se intenta cargar la foto principal de la ficha. También puedes elegir otra foto. La imagen original no se modifica.</p>
+      </div>
+      <div class="publication-preview">
+        <p id="pubDimensions" class="eyebrow">1080 × 1350 px</p>
+        <canvas id="pubCanvas" width="1080" height="1350" aria-label="Vista previa de publicación"></canvas>
+        <p id="pubStatus" role="status" aria-live="polite">Preparando publicación…</p>
+        <div class="publication-buttons">
+          <button id="pubSave" class="button button-quiet" type="button">Guardar borrador</button>
+          <button id="pubDownload" class="button button-outline" type="button">Descargar imagen</button>
+          <button id="pubCopy" class="button button-quiet" type="button">Copiar texto</button>
+          <button id="pubShare" class="button button-gold" type="button">Compartir</button>
+        </div>
+        <p class="publication-help">Compartir usa las opciones del dispositivo cuando están disponibles. No publica automáticamente en páginas empresariales.</p>
+      </div>
+    </div>
+  </div>
+</dialog>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="supabase-config.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
 <script src="crm.js" defer></script>
+<script src="publicaciones.js" defer></script>
 <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js").catch(() => {});</script>
 </body>
 </html>
