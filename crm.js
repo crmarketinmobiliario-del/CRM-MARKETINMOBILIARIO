@@ -451,6 +451,15 @@
       if (!saved.synced) setStatus(saved.error ? `Cambio guardado localmente; falta sincronizar: ${saved.error.message}` : "Cambio guardado localmente; se sincronizará al reconectar.");
     }));
   }
+  function priceNumber(value) { return Number(String(value ?? "").replace(/[^\d.]/g, "")) || 0; }
+  function formatPriceInput() {
+    const el = $("propertyPrice");
+    if (!el) return;
+    const digits = el.value.replace(/[^\d]/g, "");
+    el.value = digits ? "$" + Number(digits).toLocaleString("es-MX") : "";
+  }
+  $("propertyPrice").addEventListener("input", formatPriceInput);
+  $("propertyPrice").addEventListener("blur", formatPriceInput);
   function moneyMXN(value) {
     return new Intl.NumberFormat("es-MX", { style:"currency", currency:"MXN", maximumFractionDigits:0 }).format(Number(value) || 0);
   }
@@ -487,7 +496,7 @@
       setCurrentSection("sellers");
       return;
     }
-    $("propertyForm").reset(); $("propertyId").value = ""; $("propertyFormError").textContent = "";
+    $("propertyForm").reset(); $("propertyId").value = ""; $("deletePropertyBtn").hidden = true; $("propertyFormError").textContent = "";
     $("propertyDialogTitle").textContent = "Nueva propiedad";
     $("propertyOperation").value = propertyOperationFilter;
     $("propertyStatus").value = "Revisión";
@@ -498,14 +507,17 @@
   }
   function editProperty(id) {
     const property = properties.find(item => item.id === id); if (!property) return;
-    $("propertyForm").reset(); $("propertyFormError").textContent = "";
+    $("propertyForm").reset(); $("propertyFormError").textContent = ""; $("deletePropertyBtn").hidden = false;
     $("propertyDialogTitle").textContent = "Ficha de propiedad";
     $("propertyId").value = property.id; $("propertyTitle").value = property.title;
     $("propertyOperation").value = property.operation; $("propertyKind").value = property.propertyType;
-    $("propertyPrice").value = property.price; $("propertySurface").value = property.surface || "";
+    $("propertyPrice").value = property.price; formatPriceInput(); $("propertySurface").value = property.surface || "";
     $("propertySurfaceUnit").value = property.surfaceUnit || "m²"; $("propertyZone").value = property.zone;
     $("propertyAddress").value = property.address || ""; $("propertyStatus").value = property.status || "Revisión";
     $("propertyDescription").value = property.description || "";
+    const publicContact = JSON.parse(localStorage.getItem(`crm-property-contact:${property.id}`) || "{}");
+    $("propertyPublicPhone").value = publicContact.phone || "";
+    $("propertyPublicEmail").value = publicContact.email || "";
     $("propertyTitleReviewed").checked = Boolean(property.titleReviewed);
     $("propertyAgreementSigned").checked = Boolean(property.agreementSigned);
     const owners = activeLeads().filter(lead => ["Propietario vendedor","Ofrece renta"].includes(lead.clientType));
@@ -672,7 +684,7 @@
     const previous = properties.find(property => property.id === id);
     const property = {
       id, ownerId:currentUser?.id || "", title:$("propertyTitle").value.trim(), operation:$("propertyOperation").value,
-      propertyType:$("propertyKind").value, price:Number($("propertyPrice").value) || 0,
+      propertyType:$("propertyKind").value, price:priceNumber($("propertyPrice").value),
       surface:$("propertySurface").value, surfaceUnit:$("propertySurfaceUnit").value,
       zone:$("propertyZone").value.trim(), address:$("propertyAddress").value.trim(), ownerLeadId:$("propertyOwner").value,
       status:$("propertyStatus").value, titleReviewed:$("propertyTitleReviewed").checked,
@@ -690,12 +702,24 @@
     }
     try {
       const saved = await putProperty(property);
+      localStorage.setItem(`crm-property-contact:${property.id}`, JSON.stringify({phone:$("propertyPublicPhone").value.trim(),email:$("propertyPublicEmail").value.trim()}));
       properties = await getAllProperties();
       properties = properties.filter(item => !item.ownerId || !currentUser || item.ownerId === currentUser.id);
       $("propertyDialog").close(); renderProperties();
       if (!saved.synced) setStatus(saved.error ? `Propiedad guardada en este dispositivo; falta sincronizar: ${saved.error.message}` : "Propiedad guardada en este dispositivo; se sincronizará al reconectar.");
       else setStatus("Propiedad guardada y sincronizada.");
     } catch (error) { $("propertyFormError").textContent = error.message || "No se pudo guardar la propiedad."; }
+  });
+
+  $("deletePropertyBtn").addEventListener("click", async () => {
+    const id = $("propertyId").value;
+    const property = properties.find(item => item.id === id);
+    if (!property || !window.confirm(`¿Eliminar la propiedad “${property.title}” del inventario? Se archivará y dejará de aparecer. Esta acción no borra fotografías del almacenamiento.`)) return;
+    property.archived = true;
+    const saved = await putProperty(property);
+    $("propertyDialog").close();
+    await refresh();
+    if (!saved.synced) setStatus("Propiedad archivada localmente. Falta sincronizar con Supabase.");
   });
 
   function extractHints(text) {

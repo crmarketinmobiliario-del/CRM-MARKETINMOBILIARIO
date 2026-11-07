@@ -155,7 +155,7 @@
       <label class="span-2">Nombre o título<input id="propertyTitle" required placeholder="Ej. Casa con alberca en Nuevo Nayarit"></label>
       <label>Operación<select id="propertyOperation" required><option>Venta</option><option>Renta</option></select></label>
       <label>Tipo de inmueble<select id="propertyKind" required><option>Departamento</option><option>Casa</option><option>Terreno</option><option>Hectárea</option></select></label>
-      <label>Precio en pesos<input id="propertyPrice" type="number" min="0" step="1000" required placeholder="Ej. 2500000"></label>
+      <label>Precio en pesos (MXN)<input id="propertyPrice" type="text" inputmode="decimal" required placeholder="$2,500,000" autocomplete="off"></label>
       <label>Superficie<input id="propertySurface" type="number" min="0" step="0.01" placeholder="Ej. 180"></label>
       <label>Unidad<select id="propertySurfaceUnit"><option>m²</option><option>ha</option></select></label>
       <label>Ciudad / zona<input id="propertyZone" required placeholder="Ej. Tepic, Nuevo Nayarit"></label>
@@ -167,10 +167,10 @@
       <div class="span-2"><button id="openPublicationCenter" class="button button-outline" type="button" hidden>✦ Centro de publicaciones</button></div>
        <label class="span-2">Foto principal<input id="propertyPhoto" type="file" accept="image/*" capture="environment"></label>
       <div id="propertyPhotoPreview" class="property-photo-preview span-2" hidden></div>
-      <label class="span-2">Descripción y observaciones<textarea id="propertyDescription" rows="4" placeholder="Características y detalles del inmueble"></textarea></label>
+      <label>WhatsApp comercial<input id="propertyPublicPhone" type="tel" placeholder="322 123 4567"></label><label>Correo comercial<input id="propertyPublicEmail" type="email" placeholder="contacto@ejemplo.com"></label><label class="span-2">Descripción y observaciones<textarea id="propertyDescription" rows="4" placeholder="Características y detalles del inmueble"></textarea></label>
       <p id="propertyFormError" class="form-error span-2" role="alert"></p>
     </div>
-    <div class="dialog-actions"><button class="button button-quiet" type="button" data-close="propertyDialog">Cancelar</button><button class="button button-gold" type="submit">Guardar propiedad</button></div>
+    <div class="dialog-actions"><button id="deletePropertyBtn" class="button button-danger" type="button" hidden>Eliminar propiedad</button><span class="dialog-actions-spacer"></span><button class="button button-quiet" type="button" data-close="propertyDialog">Cancelar</button><button class="button button-gold" type="submit">Guardar propiedad</button></div>
   </form>
 </dialog>
 
@@ -199,8 +199,8 @@
         <label>Encuadre<select id="pubFit"><option value="contain">Fit · imagen completa</option><option value="cover">Llenar · permite recorte</option></select></label>
         <label>Código de propiedad<input id="pubCode" placeholder="RM-001" maxlength="24"></label>
         <label>Título<input id="pubTitle" maxlength="150"></label>
-        <label>Descripción<textarea id="pubCaption" rows="5" placeholder="Describe la propiedad para esta publicación"></textarea></label>
-        <label>Llamado a la acción<input id="pubCta" value="Solicita información y agenda tu visita."></label>
+        <button id="pubGenerate" class="button button-gold" type="button">✦ Generar publicación automáticamente</button><label>Publicación generada (editable)<textarea id="pubCaption" rows="5" placeholder="Describe la propiedad para esta publicación"></textarea></label>
+        <label>WhatsApp de contacto<input id="pubPhone" type="tel" placeholder="322 123 4567"></label><label>Correo de contacto<input id="pubEmail" type="email" placeholder="contacto@ejemplo.com"></label><label>Llamado a la acción<input id="pubCta" value="Solicita información y agenda tu visita."></label>
         <label>Hashtags<input id="pubTags" value="#CasaEnVenta #PuertoVallarta #MarketInmobiliario"></label>
         <label>Enlace público de la ficha (opcional)<input id="pubUrl" type="url" placeholder="https://..." autocomplete="off"></label>
         <label>Elegir foto para esta publicación<input id="pubImageFile" type="file" accept="image/*"></label>

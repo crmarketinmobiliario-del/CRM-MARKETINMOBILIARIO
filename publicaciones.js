@@ -10,7 +10,7 @@
     whatsapp: [{ id: "status", label: "Estado · 1080 × 1920", w: 1080, h: 1920 }, { id: "square", label: "Imagen de chat · 1080 × 1080", w: 1080, h: 1080 }],
     tiktok: [{ id: "vertical", label: "Foto vertical · 1080 × 1920", w: 1080, h: 1920 }]
   };
-  const fields = ["pubCode", "pubTitle", "pubCaption", "pubCta", "pubTags", "pubUrl", "pubFit", "pubFormat"];
+  const fields = ["pubCode", "pubTitle", "pubCaption", "pubCta", "pubTags", "pubUrl", "pubFit", "pubFormat", "pubPhone", "pubEmail"];
   let propertyId = "";
   let activeImage = null;
   let imageObjectUrl = "";
@@ -42,7 +42,7 @@
     pubCaption: $("propertyDescription").value.trim(),
     pubCta: "Solicita información y agenda tu visita.",
     pubTags: "#CasaEnVenta #PuertoVallarta #MarketInmobiliario",
-    pubUrl: "", pubFit: "contain"
+    pubUrl: "", pubPhone: $("propertyPublicPhone")?.value || "", pubEmail: $("propertyPublicEmail")?.value || "", pubFit: "contain"
   });
   function updateFormats(preferred) {
     const network = $("pubNetwork").value;
@@ -92,8 +92,29 @@
       status("Fotografía lista para revisar y exportar.");
     } catch (error) { activeImage = null; render(); status(error.message); }
   }
+  function generatePublication() {
+    const code = $("pubCode").value.trim();
+    const title = $("pubTitle").value.trim();
+    const zone = $("propertyZone").value.trim();
+    const operation = $("propertyOperation").value;
+    const type = $("propertyKind").value;
+    const price = $("propertyPrice").value.trim();
+    const surface = $("propertySurface").value.trim();
+    const unit = $("propertySurfaceUnit").value;
+    const description = $("propertyDescription").value.trim();
+    const network = $("pubNetwork").value;
+    const opening = network === "instagram" ? "🏡 ¡Descubre tu próximo espacio!" : network === "tiktok" ? "🏡 ¡Conoce esta propiedad!" : "🏡 Oportunidad inmobiliaria";
+    $("pubCaption").value = [opening, title, code ? `Clave: ${code}` : "", `${type} en ${operation.toLowerCase()}${zone ? ` · ${zone}` : ""}`,
+      price ? `💰 Precio: ${price} MXN` : "", surface ? `📐 Superficie: ${surface} ${unit}` : "", description,
+      "📲 Solicita información y agenda tu visita."].filter(Boolean).join("\n\n");
+    status("Publicación generada. Revísala y edítala antes de compartir.");
+  }
+  $("pubGenerate").addEventListener("click", generatePublication);
   function buildText() {
-    return [$("pubTitle").value.trim(), $("pubCaption").value.trim(), $("pubCta").value.trim(), $("pubTags").value.trim(), $("pubUrl").value.trim()].filter(Boolean).join("\n\n");
+    return [$("pubTitle").value.trim(), $("pubCaption").value.trim(), $("pubCta").value.trim(),
+      $("pubPhone").value.trim() ? `WhatsApp: ${$("pubPhone").value.trim()}` : "",
+      $("pubEmail").value.trim() ? `Correo: ${$("pubEmail").value.trim()}` : "",
+      $("pubTags").value.trim(), $("pubUrl").value.trim()].filter(Boolean).join("\n\n");
   }
   async function imageBlob() {
     if (!activeImage) throw new Error("Selecciona una fotografía antes de exportar o compartir.");
@@ -153,7 +174,9 @@
     $("pubHeading").textContent = $("propertyTitle").value || "Publicar propiedad";
     $("pubNetwork").value = "facebook";
     lastNetwork = "facebook";
+    const existingDraft = getDraft(lastNetwork);
     restore(lastNetwork);
+    if (!existingDraft) generatePublication();
     dialog.showModal();
     const preview = $("propertyPhotoPreview").querySelector("img");
     activeImage = null;
@@ -167,7 +190,7 @@
     $("openPublicationCenter").hidden = !$("propertyId").value;
   }).observe($("propertyDialog"), { attributes: true, attributeFilter: ["open"] });
   $("pubClose").addEventListener("click", () => dialog.close());
-  $("pubNetwork").addEventListener("change", () => { saveNetwork(lastNetwork); lastNetwork = $("pubNetwork").value; restore(lastNetwork); });
+  $("pubNetwork").addEventListener("change", () => { saveNetwork(lastNetwork); lastNetwork = $("pubNetwork").value; const draft = getDraft(lastNetwork); restore(lastNetwork); if (!draft) generatePublication(); });
   function saveNetwork(network) {
     const data = Object.fromEntries(fields.map(id => [id, $(id).value]));
     try { localStorage.setItem(key(network), JSON.stringify(data)); } catch (_) { /* storage unavailable */ }
