@@ -55,5 +55,3 @@ body,.topbar{background:#000}.topbar{border-color:#383838}.lead-card,.property-c
 .publication-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .publication-help{font-size:.73rem;color:var(--muted);line-height:1.5;grid-column:1/-1}
 @media(max-width:760px){.publication-dialog{width:100vw!important;max-width:none!important;height:100dvh!important;max-height:none!important}.publication-grid{grid-template-columns:1fr}.publication-fields{grid-template-columns:1fr 1fr}.publication-preview{padding-bottom:24px}#pubCanvas{max-height:48vh}.publication-buttons{grid-template-columns:1fr 1fr}}
-
-#pubGenerate{width:100%;margin:8px 0}#deletePropertyBtn{margin-right:auto}#propertyPrice{font-variant-numeric:tabular-nums}

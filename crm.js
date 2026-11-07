@@ -451,15 +451,6 @@
       if (!saved.synced) setStatus(saved.error ? `Cambio guardado localmente; falta sincronizar: ${saved.error.message}` : "Cambio guardado localmente; se sincronizará al reconectar.");
     }));
   }
-  function priceNumber(value) { return Number(String(value ?? "").replace(/[^\d.]/g, "")) || 0; }
-  function formatPriceInput() {
-    const el = $("propertyPrice");
-    if (!el) return;
-    const digits = el.value.replace(/[^\d]/g, "");
-    el.value = digits ? "$" + Number(digits).toLocaleString("es-MX") : "";
-  }
-  $("propertyPrice").addEventListener("input", formatPriceInput);
-  $("propertyPrice").addEventListener("blur", formatPriceInput);
   function moneyMXN(value) {
     return new Intl.NumberFormat("es-MX", { style:"currency", currency:"MXN", maximumFractionDigits:0 }).format(Number(value) || 0);
   }
@@ -491,12 +482,7 @@
   }
   function openNewProperty() {
     const owners = activeLeads().filter(lead => ["Propietario vendedor","Ofrece renta"].includes(lead.clientType));
-    if (!owners.length) {
-      setStatus("Primero agrega al propietario en la sección Vendedores; después podrás ligarlo a la propiedad.");
-      setCurrentSection("sellers");
-      return;
-    }
-    $("propertyForm").reset(); $("propertyId").value = ""; $("deletePropertyBtn").hidden = true; $("propertyFormError").textContent = "";
+    $("propertyForm").reset(); $("propertyId").value = ""; $("propertyFormError").textContent = "";
     $("propertyDialogTitle").textContent = "Nueva propiedad";
     $("propertyOperation").value = propertyOperationFilter;
     $("propertyStatus").value = "Revisión";
@@ -507,17 +493,14 @@
   }
   function editProperty(id) {
     const property = properties.find(item => item.id === id); if (!property) return;
-    $("propertyForm").reset(); $("propertyFormError").textContent = ""; $("deletePropertyBtn").hidden = false;
+    $("propertyForm").reset(); $("propertyFormError").textContent = "";
     $("propertyDialogTitle").textContent = "Ficha de propiedad";
     $("propertyId").value = property.id; $("propertyTitle").value = property.title;
     $("propertyOperation").value = property.operation; $("propertyKind").value = property.propertyType;
-    $("propertyPrice").value = property.price; formatPriceInput(); $("propertySurface").value = property.surface || "";
+    $("propertyPrice").value = formatMoneyInput(property.price); $("propertySurface").value = property.surface || "";
     $("propertySurfaceUnit").value = property.surfaceUnit || "m²"; $("propertyZone").value = property.zone;
     $("propertyAddress").value = property.address || ""; $("propertyStatus").value = property.status || "Revisión";
     $("propertyDescription").value = property.description || "";
-    const publicContact = JSON.parse(localStorage.getItem(`crm-property-contact:${property.id}`) || "{}");
-    $("propertyPublicPhone").value = publicContact.phone || "";
-    $("propertyPublicEmail").value = publicContact.email || "";
     $("propertyTitleReviewed").checked = Boolean(property.titleReviewed);
     $("propertyAgreementSigned").checked = Boolean(property.agreementSigned);
     const owners = activeLeads().filter(lead => ["Propietario vendedor","Ofrece renta"].includes(lead.clientType));
@@ -558,7 +541,7 @@
     $("startDate").value = toDateInput(new Date());
     $("nextChannel").value = "Llamada";
     $("source").value = prefill.source || "Captura manual";
-    $("name").value = prefill.name || ""; $("phone").value = prefill.phone || ""; $("email").value = prefill.email || ""; $("budget").value = prefill.budget || "";
+    $("name").value = prefill.name || ""; $("phone").value = prefill.phone || ""; $("email").value = prefill.email || ""; $("budget").value = prefill.budget ? formatMoneyInput(prefill.budget) : "";
     $("comments").value = prefill.comments || "";
     if (prefill.operation) $("operation").value = prefill.operation;
     if (prefill.propertyType) $("propertyType").value = prefill.propertyType;
@@ -580,6 +563,7 @@
     for (const key of ["name","phone","email","clientType","operation","budget","creditType","propertyType","zoneType","zone","source","nextChannel","comments"]) {
       if ($(key)) $(key).value = lead[key] ?? "";
     }
+    $("budget").value = lead.budget == null ? "" : formatMoneyInput(lead.budget);
     $("startDate").value = lead.startDate || ""; $("nextContact").value = toLocalDateTimeInput(lead.nextContact); $("targetDate").value = lead.targetDate || ""; $("rentStart").value = lead.rentStart || ""; $("rentEnd").value = lead.rentEnd || ""; $("waOptIn").checked = Boolean(lead.waOptIn);
     const activities = [...(lead.activities || [])].sort((a,b) => b.date.localeCompare(a.date));
     $("activityBox").hidden = activities.length === 0;
@@ -678,13 +662,44 @@
     if ($("propertyKind").value === "Hectárea") $("propertySurfaceUnit").value = "ha";
     else if ($("propertySurfaceUnit").value === "ha") $("propertySurfaceUnit").value = "m²";
   });
+  // El usuario ve pesos y comas; la base de datos recibe números limpios.
+  function parseMoney(value) {
+    const clean = String(value ?? "").replace(/[^0-9.]/g, "");
+    const result = Number(clean);
+    return Number.isFinite(result) ? result : 0;
+  }
+  function formatMoneyInput(value) {
+    const raw = String(value ?? "").replace(/[^0-9.]/g, "");
+    if (!raw) return "";
+    const pieces = raw.split(".");
+    const integer = pieces[0].replace(/^0+(?=\d)/, "") || "0";
+    const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return "$" + grouped + (pieces.length > 1 ? "." + pieces.slice(1).join("").slice(0, 2) : "");
+  }
+  for (const id of ["propertyPrice", "budget"]) {
+    const input = $(id);
+    input.addEventListener("input", () => {
+      const oldLength = input.value.length;
+      const oldPosition = input.selectionStart ?? oldLength;
+      const digitsBefore = input.value.slice(0, oldPosition).replace(/[^0-9.]/g, "").length;
+      const formatted = formatMoneyInput(input.value);
+      input.value = formatted;
+      let pos = 0, seen = 0;
+      while (pos < formatted.length && seen < digitsBefore) {
+        if (/[0-9.]/.test(formatted[pos])) seen++;
+        pos++;
+      }
+      input.setSelectionRange(pos, pos);
+    });
+  }
+
   $("propertyForm").addEventListener("submit", async event => {
     event.preventDefault(); $("propertyFormError").textContent = "";
     const id = $("propertyId").value || uuid();
     const previous = properties.find(property => property.id === id);
     const property = {
       id, ownerId:currentUser?.id || "", title:$("propertyTitle").value.trim(), operation:$("propertyOperation").value,
-      propertyType:$("propertyKind").value, price:priceNumber($("propertyPrice").value),
+      propertyType:$("propertyKind").value, price:parseMoney($("propertyPrice").value),
       surface:$("propertySurface").value, surfaceUnit:$("propertySurfaceUnit").value,
       zone:$("propertyZone").value.trim(), address:$("propertyAddress").value.trim(), ownerLeadId:$("propertyOwner").value,
       status:$("propertyStatus").value, titleReviewed:$("propertyTitleReviewed").checked,
@@ -693,8 +708,7 @@
       description:$("propertyDescription").value.trim(), archived:false,
       createdAt:previous?.createdAt || new Date().toISOString(), updatedAt:new Date().toISOString()
     };
-    if (!property.ownerLeadId) { $("propertyFormError").textContent = "Selecciona al propietario para vincular esta propiedad con su expediente."; return; }
-    if (["Propietario vendedor","Ofrece renta"].includes(leads.find(lead => lead.id === property.ownerLeadId)?.clientType) === false) {
+    if (property.ownerLeadId && ["Propietario vendedor","Ofrece renta"].includes(leads.find(lead => lead.id === property.ownerLeadId)?.clientType) === false) {
       $("propertyFormError").textContent = "El contacto seleccionado debe estar registrado como vendedor o propietario que ofrece renta."; return;
     }
     if (["Promoción","Entrega"].includes(property.status) && (!property.titleReviewed || !property.agreementSigned)) {
@@ -702,24 +716,16 @@
     }
     try {
       const saved = await putProperty(property);
-      localStorage.setItem(`crm-property-contact:${property.id}`, JSON.stringify({phone:$("propertyPublicPhone").value.trim(),email:$("propertyPublicEmail").value.trim()}));
       properties = await getAllProperties();
       properties = properties.filter(item => !item.ownerId || !currentUser || item.ownerId === currentUser.id);
       $("propertyDialog").close(); renderProperties();
-      if (!saved.synced) setStatus(saved.error ? `Propiedad guardada en este dispositivo; falta sincronizar: ${saved.error.message}` : "Propiedad guardada en este dispositivo; se sincronizará al reconectar.");
+      if (!saved.synced) {
+        const warning = saved.error ? `No se sincronizó con Supabase: ${saved.error.message}` : "Sin conexión: pendiente de sincronizar con Supabase.";
+        setStatus(`Propiedad guardada solo en este dispositivo. ${warning}`);
+        alert(`ATENCIÓN: la propiedad se guardó únicamente en este dispositivo. ${warning}`);
+      }
       else setStatus("Propiedad guardada y sincronizada.");
     } catch (error) { $("propertyFormError").textContent = error.message || "No se pudo guardar la propiedad."; }
-  });
-
-  $("deletePropertyBtn").addEventListener("click", async () => {
-    const id = $("propertyId").value;
-    const property = properties.find(item => item.id === id);
-    if (!property || !window.confirm(`¿Eliminar la propiedad “${property.title}” del inventario? Se archivará y dejará de aparecer. Esta acción no borra fotografías del almacenamiento.`)) return;
-    property.archived = true;
-    const saved = await putProperty(property);
-    $("propertyDialog").close();
-    await refresh();
-    if (!saved.synced) setStatus("Propiedad archivada localmente. Falta sincronizar con Supabase.");
   });
 
   function extractHints(text) {
