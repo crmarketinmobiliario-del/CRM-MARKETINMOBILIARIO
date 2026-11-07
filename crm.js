@@ -151,6 +151,30 @@
     const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
     return local.toISOString().slice(0, 16);
   }
+  // Normaliza los tipos de crédito antes de enviarlos a Supabase.
+  function normalizeCreditType(value) {
+    const original = String(value ?? "").trim();
+    const normalized = original.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const options = {
+      "": "",
+      "no aplica": "",
+      "ninguno": "",
+      "sin credito": "",
+      "sin definir": "",
+      "infonavit": "Infonavit",
+      "fovissste": "FOVISSSTE",
+      "bancario": "Bancario",
+      "credito bancario": "Bancario",
+      "recursos propios": "Recursos propios",
+      "propios": "Recursos propios",
+      "contado": "Recursos propios"
+    };
+    if (!Object.prototype.hasOwnProperty.call(options, normalized)) {
+      throw new Error(`Tipo de crédito no reconocido: ${original}. Revisa la ficha del contacto.`);
+    }
+    return options[normalized];
+  }
+
   function toDatabaseLead(lead) {
     return {
       id: lead.id,
@@ -161,7 +185,7 @@
       budget: lead.budget ?? null,
       client_type: lead.clientType,
       operation: lead.operation,
-      credit_type: lead.creditType || "",
+      credit_type: normalizeCreditType(lead.creditType),
       property_type: lead.propertyType || "",
       zone_type: lead.zoneType || "",
       zone: lead.zone || null,
