@@ -53,7 +53,32 @@
     </div>
   </section>
 
-  <section class="reminders-panel" id="remindersPanel" hidden><div class="section-head"><div><p class="eyebrow">AGENDA ACTIVA</p><h2>Recordatorios y publicaciones</h2></div><button id="enableNotifications" class="button button-outline" type="button">Activar avisos</button></div><p id="notificationHelp" class="reminder-note">Los avisos de esta versión se muestran con el CRM abierto; las notificaciones con la aplicación cerrada requieren activar un servicio push.</p><div id="reminderList" class="reminder-list"></div></section>
+  <section class="reminders-panel" id="remindersPanel" hidden>
+    <div class="reminders-summary">
+      <div class="reminders-summary-copy"><p class="eyebrow">AGENDA PERSONAL</p><h2>Pendientes para hoy <span id="reminderCount" class="reminder-count">0</span></h2><p id="reminderDateText">Actividades que requieren atención.</p></div>
+      <button id="openRemindersBtn" class="button button-outline" type="button">Ver pendientes</button>
+    </div>
+  </section>
+  <dialog id="remindersDialog" class="dialog reminders-dialog" aria-labelledby="remindersDialogTitle">
+    <div class="reminders-dialog-inner">
+      <div class="dialog-head"><div><p class="eyebrow">AGENDA DE TRABAJO</p><h2 id="remindersDialogTitle">Mis pendientes</h2><p id="reminderHelp" class="reminder-note">Selecciona una actividad para abrir su ficha.</p></div><button id="closeRemindersBtn" class="button button-quiet" type="button">Cerrar</button></div>
+      <div id="reminderList" class="reminder-list"></div>
+      <p id="notificationHelp" class="reminder-note">Los avisos en segundo plano requieren configurar notificaciones push.</p>
+      <button id="enableNotifications" class="button button-outline" type="button">Permitir avisos en este dispositivo</button>
+    </div>
+  </dialog>
+  <dialog id="propertyDetailDialog" class="dialog property-detail-dialog" aria-labelledby="propertyDetailTitle">
+    <div class="property-detail-inner">
+      <div class="dialog-head"><div><p class="eyebrow">FICHA INMOBILIARIA</p><h2 id="propertyDetailTitle">Propiedad</h2></div><button id="closePropertyDetail" class="icon-button" type="button" aria-label="Cerrar">×</button></div>
+      <div id="propertyDetailContent"></div>
+      <div class="property-detail-actions">
+        <button id="detailEditProperty" class="button button-outline" type="button">Editar ficha</button>
+        <button id="detailPublishProperty" class="button button-gold" type="button">Publicar propiedad</button>
+        <button id="detailDeleteProperty" class="button button-danger" type="button">Eliminar propiedad</button>
+      </div>
+      <p id="propertyDetailError" class="form-error" role="alert"></p>
+    </div>
+  </dialog>
   <section class="stats" aria-label="Resumen">
     <article class="stat-card"><span>Contactos activos</span><strong id="statActive">0</strong></article>
     <article class="stat-card"><span>Seguimientos pendientes</span><strong id="statPending">0</strong></article>

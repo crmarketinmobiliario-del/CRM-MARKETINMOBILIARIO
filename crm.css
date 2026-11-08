@@ -99,86 +99,57 @@ body,.topbar{background:#000}.topbar{border-color:#383838}.lead-card,.property-c
 @media(max-width:700px){.lead-card,.property-card,.reminder-item{top:76px}.reminders-summary{padding:15px;align-items:flex-start}.reminders-summary h2{font-size:1.3rem}.reminder-item{flex-direction:column;align-items:stretch}.reminders-dialog .reminder-item{top:0}}
 @media(prefers-reduced-motion:reduce){.lead-card,.property-card,.reminder-item{transition:none}}
 
-/* Vista individual: una ficha protagonista por pantalla, con apilamiento progresivo. */
-#leadList, #propertyList { gap: 18px; padding-bottom: 12px; }
-#leadList > .lead-card, #propertyList > .property-card {
-  min-height: max(390px, calc(100dvh - 135px));
-  align-content: center;
-  align-items: center;
-  scroll-margin-top: 92px;
-  background: linear-gradient(155deg, #171717 0%, #090909 100%);
-}
-#reminderList { gap: 16px; }
-#reminderList > .reminder-item {
-  min-height: max(280px, calc(90dvh - 160px));
-  align-content: center;
-  scroll-margin-top: 95px;
-  background: linear-gradient(155deg, #171717 0%, #090909 100%);
-}
-@media (max-width: 700px) {
-  #leadList > .lead-card, #propertyList > .property-card {
-    min-height: max(360px, calc(100dvh - 100px));
-    top: 76px;
-    align-content: center;
-  }
-  #reminderList > .reminder-item {
-    min-height: max(250px, calc(90dvh - 140px));
-    top: 0;
-  }
-}
 
-
-/* ================================================================
-   TORRES MALDONADO · LUXURY RESPONSIVE · 08 NOV 2026
-   PC: tarjetas originales horizontales y compactas.
-   Móvil: fichas verticales de altura natural, sin huecos forzados.
-   ================================================================ */
-@media (min-width: 701px) {
-  #leadList, #propertyList, #reminderList {gap: 12px; padding-bottom: 0; isolation: auto;}
-  #leadList > .lead-card, #propertyList > .property-card, #reminderList > .reminder-item {
-    position: relative; top: auto; z-index: auto; min-height: 0; height: auto;
-    align-content: normal; align-items: center; scroll-margin-top: 0;
-    box-shadow: none; background: linear-gradient(120deg,#141414,#101010);
-  }
-  #propertyList > .property-card {grid-template-columns: 142px minmax(0,1fr) auto; gap: 18px; padding: 14px 16px;}
-  .property-card-photo {width:142px;height:110px;}
-  #leadList > .lead-card {grid-template-columns:minmax(190px,1.3fr) minmax(145px,1fr) minmax(145px,.9fr) minmax(150px,.9fr) auto;gap:16px;padding:16px 18px;}
-  #reminderList > .reminder-item {padding:14px 16px;}
+/* Torres Maldonado: lujo sobrio, tarjetas compactas en escritorio. */
+#leadList,#propertyList{gap:12px;padding-bottom:16px}
+#leadList>.lead-card,#propertyList>.property-card{min-height:0;height:auto;align-content:normal;position:relative;top:auto;transform:none;scroll-margin-top:88px}
+#propertyList>.property-card{grid-template-columns:148px minmax(0,1fr) auto;gap:18px;padding:13px 16px}
+.property-card-photo{width:148px;height:116px}
+.property-card-body{gap:6px}
+.property-card h3{font-size:1.17rem}
+.property-price{font-size:1.12rem}
+.property-edit{align-self:center}
+.reminders-panel{margin:12px 0 22px;max-width:100%;background:#101010}
+.reminders-summary{padding:11px 16px}
+.reminders-summary h2{font-size:1.14rem}
+.reminders-summary p:not(.eyebrow){margin:3px 0 0}
+.reminders-summary .eyebrow{margin-bottom:4px}
+.reminders-dialog{width:min(1050px,calc(100% - 24px));max-height:88dvh}
+.reminder-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:8px 0 22px}
+#reminderList>.reminder-item{position:relative;top:auto;min-height:145px;height:auto;display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;gap:12px;padding:16px;background:#141414;border:1px solid #55482f}
+.reminder-item .button{width:100%;margin-top:auto}
+.reminder-item-copy strong{font-size:1rem}
+.property-detail-dialog{width:min(820px,calc(100% - 24px));max-height:90dvh;overflow:auto}
+.property-detail-inner{padding:clamp(18px,3vw,30px)}
+.property-detail-photo{height:clamp(190px,35vh,340px);display:grid;place-items:center;overflow:hidden;background:#161616;border:1px solid #353535;border-radius:9px}
+.property-detail-photo img{width:100%;height:100%;object-fit:cover}
+.property-detail-information{padding:19px 0}
+.property-detail-price{display:block;font:500 1.8rem Georgia,serif;color:var(--gold);margin:14px 0}
+.property-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.property-detail-grid>div{display:grid;gap:5px;border-top:1px solid #363636;padding-top:10px}
+.property-detail-grid small{color:var(--muted);font-size:.73rem}
+.property-detail-grid strong{font-size:.87rem;font-weight:500;overflow-wrap:anywhere}
+.property-detail-description{line-height:1.6;color:#c9c4b9;white-space:pre-wrap}
+.property-detail-actions{display:flex;flex-wrap:wrap;gap:10px;border-top:1px solid #383838;padding-top:16px}
+.property-detail-actions .button-danger{margin-left:auto}
+@media(max-width:900px){.reminder-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){
+ #propertyList>.property-card{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;overflow:hidden;border-radius:12px;position:relative;top:auto;min-height:0;height:auto}
+ #propertyList>.property-card .property-card-photo{width:100%;height:auto;aspect-ratio:4/3;border:0;border-radius:0}
+ #propertyList>.property-card .property-card-body{padding:16px;gap:9px;width:100%}
+ #propertyList>.property-card h3{font-size:1.35rem}
+ #propertyList>.property-card .property-price{font-size:1.4rem}
+ #propertyList>.property-card .property-edit{align-self:stretch;margin:0 16px 16px;width:auto;height:42px;display:flex;justify-content:center}
+ #propertyList>.property-card .property-edit::after{content:"  Ver ficha";white-space:pre;font-size:.8rem}
+ #leadList>.lead-card{display:grid;grid-template-columns:1fr 1fr;gap:13px;align-items:start;min-height:0;height:auto;padding:17px;position:relative;top:auto}
+ #leadList>.lead-card .lead-main{grid-column:1/-1}
+ #leadList>.lead-card .lead-actions{grid-column:1/-1}
+ .reminders-summary{padding:12px;gap:10px;align-items:center}
+ .reminders-summary h2{font-size:1.06rem}
+ .reminders-summary .button{flex:none}
+ .reminder-list{grid-template-columns:1fr}
+ #reminderList>.reminder-item{min-height:0}
+ .property-detail-grid{grid-template-columns:1fr}
+ .property-detail-actions{flex-direction:column}
+ .property-detail-actions .button-danger{margin-left:0}
 }
-/* El resumen de pendientes nunca invade el tablero. */
-.reminders-panel {margin:12px 0 20px;border-radius:10px;background:linear-gradient(120deg,#151515,#0b0b0b);}
-.reminders-summary {padding:14px 18px;}
-.reminders-summary h2 {font-size:1.12rem;}
-.reminders-summary p:not(.eyebrow) {margin-top:5px;}
-/* Diálogo de pendientes independiente de las fichas completas. */
-#remindersDialog.dialog {position:fixed;inset:auto;width:min(820px,calc(100% - 24px));height:auto;max-height:90dvh;margin:auto;border-radius:12px;overflow:auto;}
-#remindersDialog .reminders-dialog-inner {min-height:0;}
-#reminderList > .reminder-item {position:relative;top:auto;z-index:auto;min-height:0;height:auto;box-shadow:none;scroll-margin-top:0;}
-@media (max-width:700px) {
-  #leadList, #propertyList {gap:16px;padding-bottom:16px;isolation:isolate;}
-  #leadList > .lead-card, #propertyList > .property-card {
-    position:sticky;top:76px;min-height:0;height:auto;align-content:normal;
-    align-items:stretch;scroll-margin-top:76px;z-index:var(--stack-index,1);
-    border:1px solid #665332;border-radius:12px;overflow:hidden;
-    background:linear-gradient(145deg,#191919,#0c0c0c);
-    box-shadow:0 12px 25px #000b;
-  }
-  #propertyList > .property-card {display:flex;flex-direction:column;gap:0;padding:0;align-items:stretch;}
-  #propertyList .property-card-photo {width:100%;height:auto;aspect-ratio: 16/10;border:0;border-radius:0;background:#1b1b1b;}
-  #propertyList .property-card-photo img {width:100%;height:100%;object-fit:cover;}
-  #propertyList .property-card-body {padding:16px 17px 12px;gap:7px;}
-  #propertyList .property-card h3 {font-size:1.28rem;line-height:1.3;}
-  #propertyList .property-price {font-size:1.22rem;font-weight:700;letter-spacing:.01em;}
-  #propertyList .property-card-body small {font-size:.78rem;line-height:1.5;}
-  #propertyList .property-edit {align-self:stretch;width:auto;height:42px;margin:0 16px 16px;border-color:#a98a4c;color:#e1c28c;}
-  #leadList > .lead-card {display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:18px 17px;}
-  #leadList .lead-main {width:100%;padding-bottom:10px;border-bottom:1px solid #403625;}
-  #leadList .lead-main h3 {font-size:1.3rem;line-height:1.3;}
-  #leadList .lead-actions {width:100%;justify-content:flex-start;padding-top:8px;border-top:1px solid #403625;}
-  #remindersDialog.dialog {width:calc(100% - 16px);max-height:92dvh;}
-  #reminderList > .reminder-item {display:flex;flex-direction:column;align-items:stretch;gap:14px;padding:16px;}
-  #reminderList .button {width:100%;white-space:normal;}
-  .reminders-summary {gap:10px;align-items:center;flex-wrap:wrap;}
-  .reminders-summary .button {min-width:145px;}
-}
-@media (prefers-reduced-motion:reduce) {#leadList > .lead-card,#propertyList > .property-card {transition:none;}}

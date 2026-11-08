@@ -473,6 +473,7 @@
         <div class="lead-actions"><button class="small-action" data-edit="${esc(lead.id)}" aria-label="Editar ${esc(lead.name)}" title="Editar">✎</button>${phone ? `<a class="small-action whats" href="https://wa.me/${phone}" target="_blank" rel="noopener" aria-label="Abrir WhatsApp con ${esc(lead.name)}" title="WhatsApp">W</a>` : ""}</div>
       </article>`;
     }).join("");
+    applyStackOrder();
     $("statActive").textContent = activeLeads().length;
     list.querySelectorAll("[data-edit]").forEach(button => button.addEventListener("click", event => { event.stopPropagation(); editLead(button.dataset.edit); }));
     list.querySelectorAll("[data-open]").forEach(card => card.addEventListener("click", event => { if (event.target.closest("button,a,select")) return; editLead(card.dataset.open); }));
@@ -501,11 +502,12 @@
       return `<article class="property-card" data-property-open="${esc(property.id)}"><div class="property-card-photo">${image}</div><div class="property-card-body"><div class="property-card-tags"><span class="pill">${esc(property.propertyType)}</span><span class="pill">${esc(property.operation)}</span></div><h3>${esc(property.title)}</h3><p class="property-card-zone">${esc(property.zone)}</p><strong class="property-price">${moneyMXN(property.price)}</strong><small>${esc(property.surface || "Superficie por definir")} ${esc(property.surfaceUnit || "m²")} · ${esc(property.status || "En revisión")}</small><small>Propietario: ${esc(ownerName(property.ownerLeadId) || "Sin asignar")}</small></div><button class="small-action property-edit" type="button" data-property-edit="${esc(property.id)}" aria-label="Abrir ficha de ${esc(property.title)}">↗</button></article>`;
     }));
     $("propertyList").innerHTML = cards.join("");
+    applyStackOrder();
     $("propertyList").querySelectorAll("[data-property-open]").forEach(card => card.addEventListener("click", event => {
       if (event.target.closest("button")) return;
-      editProperty(card.dataset.propertyOpen);
+      showPropertyDetail(card.dataset.propertyOpen);
     }));
-    $("propertyList").querySelectorAll("[data-property-edit]").forEach(button => button.addEventListener("click", () => editProperty(button.dataset.propertyEdit)));
+    $("propertyList").querySelectorAll("[data-property-edit]").forEach(button => button.addEventListener("click", () => showPropertyDetail(button.dataset.propertyEdit)));
   }
   const PUBLICATION_KEY = "crm_tm_publicaciones_v1";
   function publicationDates() {
@@ -525,16 +527,32 @@
   function renderReminders() {
     if (!currentUser) { $("remindersPanel").hidden = true; return; }
     $("remindersPanel").hidden = false;
+    $("reminderDateText").textContent = new Date().toLocaleDateString("es-MX", {day:"2-digit",month:"2-digit",year:"numeric"}) + " · Actividades por atender";
     const dueProperties = properties.filter(item => !item.archived && publicationDue(item));
     const dueContacts = leads.filter(item => !item.archived && item.nextContact && new Date(item.nextContact).getTime() <= Date.now());
+    const total = dueProperties.length + dueContacts.length;
+    $("reminderCount").textContent = total;
+    $("reminderHelp").textContent = total ? `${total} actividad${total === 1 ? "" : "es"} por atender. Abre una ficha y regresa a esta bandeja para continuar.` : "No tienes actividades vencidas.";
     const entries = [
-      ...dueProperties.map(item => `<div class="reminder-item"><span>📣 Publicar: <strong>${esc(item.title)}</strong></span><button class="button button-outline" type="button" data-reminder-property="${esc(item.id)}">Abrir ficha</button></div>`),
-      ...dueContacts.map(item => `<div class="reminder-item"><span>📞 ${esc(item.nextChannel || "Seguimiento")}: <strong>${esc(item.name)}</strong> · ${esc(localDateTime(item.nextContact))}</span><button class="button button-outline" type="button" data-reminder-lead="${esc(item.id)}">Abrir contacto</button></div>`)
+      ...dueProperties.map(item => `<article class="reminder-item"><div class="reminder-item-copy"><span class="reminder-kind">PUBLICACIÓN</span><strong>${esc(item.title)}</strong><small>Revisar y publicar la propiedad</small></div><button class="button button-outline" type="button" data-reminder-property="${esc(item.id)}">Abrir propiedad</button></article>`),
+      ...dueContacts.map(item => `<article class="reminder-item"><div class="reminder-item-copy"><span class="reminder-kind">${esc(item.nextChannel || "SEGUIMIENTO")}</span><strong>${esc(item.name)}</strong><small>${esc(localDateTime(item.nextContact))}</small></div><button class="button button-outline" type="button" data-reminder-lead="${esc(item.id)}">Abrir contacto</button></article>`)
     ];
-    $("reminderList").innerHTML = entries.length ? entries.join("") : '<p class="reminder-note">Sin recordatorios vencidos. Los seguimientos programados aparecerán aquí.</p>';
-    $("reminderList").querySelectorAll("[data-reminder-property]").forEach(button => button.addEventListener("click", () => editProperty(button.dataset.reminderProperty)));
-    $("reminderList").querySelectorAll("[data-reminder-lead]").forEach(button => button.addEventListener("click", () => editLead(button.dataset.reminderLead)));
+    $("reminderList").innerHTML = entries.length ? entries.join("") : '<p class="reminder-empty">Todo al día. No tienes pendientes vencidos.</p>';
+    $("reminderList").querySelectorAll("[data-reminder-property]").forEach(button => button.addEventListener("click", () => { $("remindersDialog").close(); showPropertyDetail(button.dataset.reminderProperty); }));
+    $("reminderList").querySelectorAll("[data-reminder-lead]").forEach(button => button.addEventListener("click", () => { $("remindersDialog").close(); editLead(button.dataset.reminderLead); }));
+    applyStackOrder();
   }
+  function applyStackOrder() {
+    for (const listId of ["leadList", "propertyList", "reminderList"]) {
+      const list = $(listId);
+      if (!list) continue;
+      [...list.children].forEach((card, index) => {
+        card.style.setProperty("--stack-index", String(index + 1));
+      });
+    }
+  }
+  $("openRemindersBtn").addEventListener("click", () => { renderReminders(); $("remindersDialog").showModal(); });
+  $("closeRemindersBtn").addEventListener("click", () => $("remindersDialog").close());
   $("markPublishedBtn").addEventListener("click", () => {
     const id = $("propertyId").value;
     if (!id) return;
@@ -548,6 +566,75 @@
     $("notificationHelp").textContent = permission === "granted" ? "Avisos permitidos. En esta versión el CRM debe estar abierto para emitirlos; el envío push en segundo plano está pendiente." : "Notificaciones no autorizadas. Tus pendientes siguen visibles en la agenda.";
     if (permission === "granted") new Notification("CRM Torres Maldonado", { body:"Avisos habilitados mientras el CRM esté abierto." });
   });
+  let viewedPropertyId = "";
+  async function showPropertyDetail(id) {
+    const property = properties.find(item => item.id === id);
+    if (!property) return;
+    viewedPropertyId = id;
+    $("propertyDetailError").textContent = "";
+    $("propertyDetailTitle").textContent = property.title;
+    const photo = await signedPropertyPhoto(property);
+    if (viewedPropertyId !== id) return;
+    $("propertyDetailContent").innerHTML = `
+      <div class="property-detail-photo">${photo ? `<img src="${esc(photo)}" alt="Fotografía de ${esc(property.title)}">` : `<span class="property-placeholder">RM</span>`}</div>
+      <div class="property-detail-information">
+        <div class="property-card-tags"><span class="pill">${esc(property.propertyType)}</span><span class="pill">${esc(property.operation)}</span><span class="pill">${esc(property.status)}</span></div>
+        <strong class="property-detail-price">${moneyMXN(property.price)}</strong>
+        <div class="property-detail-grid">
+          <div><small>Ubicación</small><strong>${esc(property.zone || "Sin definir")}</strong></div>
+          <div><small>Superficie</small><strong>${esc(property.surface || "Sin definir")} ${esc(property.surfaceUnit || "")}</strong></div>
+          <div><small>Propietario</small><strong>${esc(ownerName(property.ownerLeadId) || "Sin asignar")}</strong></div>
+          <div><small>Dirección / referencia</small><strong>${esc(property.address || "Sin definir")}</strong></div>
+        </div>
+        ${property.description ? `<p class="property-detail-description">${esc(property.description)}</p>` : ""}
+      </div>`;
+    $("propertyDetailDialog").showModal();
+  }
+  $("closePropertyDetail").addEventListener("click", () => $("propertyDetailDialog").close());
+  $("detailEditProperty").addEventListener("click", () => {
+    $("propertyDetailDialog").close(); editProperty(viewedPropertyId);
+  });
+  $("detailPublishProperty").addEventListener("click", () => {
+    const id = viewedPropertyId;
+    $("propertyDetailDialog").close();
+    editProperty(id);
+    if (!$("openPublicationCenter").hidden) $("openPublicationCenter").click();
+  });
+
+  async function deleteLocalRecord(storeName, id) {
+    const database = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(storeName, "readwrite");
+      transaction.objectStore(storeName).delete(id);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error || new Error("No se pudo eliminar el registro local."));
+    });
+  }
+  async function deletePropertyPermanently(id) {
+    const property = properties.find(item => item.id === id);
+    if (!property || !currentUser) return;
+    if (!navigator.onLine) { alert("Para eliminar definitivamente debes tener conexión a internet."); return; }
+    if (!confirm(`¿Eliminar DEFINITIVAMENTE la propiedad "${property.title}"? Esta acción no se puede deshacer.`)) return;
+    const { error } = await supabaseClient.from(PROPERTIES_TABLE).delete().eq("id", id).eq("owner_id", currentUser.id).select("id");
+    if (error) { alert(`No se pudo eliminar en Supabase: ${error.message}`); return; }
+    // Confirmar que el registro ya no exista antes de retirar la copia local.
+    const { data:check, error:checkError } = await supabaseClient.from(PROPERTIES_TABLE).select("id").eq("id", id);
+    if (checkError || (check && check.length)) { alert("No se confirmó el borrado en Supabase. No se eliminó la copia local."); return; }
+    await deleteLocalRecord("properties", id);
+    properties = properties.filter(item => item.id !== id);
+    const dates = publicationDates(); delete dates[id]; localStorage.setItem(PUBLICATION_KEY, JSON.stringify(dates));
+    if (property.photoPath && !properties.some(item => item.photoPath === property.photoPath)) {
+      const { error:photoError } = await supabaseClient.storage.from(PHOTO_BUCKET).remove([property.photoPath]);
+      if (photoError) setStatus("Propiedad eliminada; no se pudo borrar su fotografía: " + photoError.message);
+    }
+    if ($("propertyDetailDialog").open) $("propertyDetailDialog").close();
+    if ($("propertyDialog").open) $("propertyDialog").close();
+    await refresh();
+    setStatus("Propiedad eliminada definitivamente.");
+  }
+  $("detailDeleteProperty").addEventListener("click", () => { void deletePropertyPermanently(viewedPropertyId); });
+  $("deletePropertyBtn").addEventListener("click", () => { void deletePropertyPermanently($("propertyId").value); });
+
   function ownerName(id) { return leads.find(lead => lead.id === id)?.name || ""; }
   function setPropertyOperation(operation) {
     propertyOperationFilter = operation;
@@ -703,15 +790,27 @@
       if (!saved.synced) setStatus(saved.error ? `Contacto guardado localmente; falta sincronizar: ${saved.error.message}` : "Contacto guardado localmente; se sincronizará al reconectar.");
     } catch (error) { setFormError(error.message); }
   });
-  async function archiveLead(id) {
-    const lead = leads.find(item => item.id === id); if (!lead) return;
-    if (!window.confirm(`¿Eliminar a ${lead.name} de tus listas? La ficha se archivará y dejará de aparecer.`)) return;
-    lead.archived = true; lead.updatedAt = new Date().toISOString();
-    const saved = await putLead(lead); await refresh();
-    if (!saved.synced) setStatus(saved.error ? `Archivado localmente; falta sincronizar: ${saved.error.message}` : "Archivado localmente; se sincronizará al reconectar.");
+  async function deleteLeadPermanently(id) {
+    const lead = leads.find(item => item.id === id);
+    if (!lead || !currentUser) return;
+    const linked = properties.filter(item => item.ownerLeadId === id);
+    if (linked.length) {
+      alert(`Este propietario está vinculado a ${linked.length} propiedad(es). Primero desvincula las propiedades desde sus fichas; no se eliminarán automáticamente.`);
+      return;
+    }
+    if (!navigator.onLine) { alert("Para eliminar definitivamente necesitas conexión a internet."); return; }
+    if (!confirm(`¿Eliminar DEFINITIVAMENTE a "${lead.name}"? No se puede deshacer.`)) return;
+    const { error } = await supabaseClient.from(CLOUD_TABLE).delete().eq("id", id).eq("owner_id", currentUser.id);
+    if (error) { alert("No se pudo eliminar en Supabase: " + error.message); return; }
+    const { data:check, error:checkError } = await supabaseClient.from(CLOUD_TABLE).select("id").eq("id", id);
+    if (checkError || (check && check.length)) { alert("No se confirmó la eliminación en Supabase; se conservó la copia local."); return; }
+    await deleteLocalRecord("leads", id);
+    leads = leads.filter(item => item.id !== id);
     $("leadDialog").close();
+    await refresh();
+    setStatus("Contacto eliminado definitivamente.");
   }
-  $("deleteLeadBtn").addEventListener("click", () => { void archiveLead($("leadId").value); });
+  $("deleteLeadBtn").addEventListener("click", () => { void deleteLeadPermanently($("leadId").value); });
 
   function setCurrentSection(section) {
     currentSection = section;
