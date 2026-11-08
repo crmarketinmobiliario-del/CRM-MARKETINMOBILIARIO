@@ -71,3 +71,58 @@ body,.topbar{background:#000}.topbar{border-color:#383838}.lead-card,.property-c
 .reminder-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border-radius: 12px; border: 1px solid rgba(207,169,85,.2); }
 .reminder-item .button { white-space: nowrap; }
 @media(max-width:600px) { .reminder-item { align-items: stretch; flex-direction: column; } }
+
+/* CRM personal: tarjetas apiladas en todas las categorías y en pendientes. */
+.lead-list,.property-list,.reminder-list{display:grid;gap:12px;isolation:isolate;align-content:start}
+.lead-card,.property-card,.reminder-item{
+  position:sticky;top:90px;z-index:var(--stack-index,1);
+  background:#141414;border:1px solid #574b30;
+  box-shadow:0 10px 26px rgba(0,0,0,.78);
+  transition:box-shadow .2s ease,border-color .2s ease;
+}
+.lead-card:hover,.property-card:hover,.reminder-item:hover{border-color:#c6aa79;box-shadow:0 16px 35px rgba(0,0,0,.85)}
+.reminders-panel{padding:0;margin:16px 0 22px;border:1px solid #4e422d;border-radius:12px;background:linear-gradient(120deg,#171717,#101010)}
+.reminders-summary{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 20px}
+.reminders-summary h2{font:500 1.5rem Georgia,serif;margin:0;display:flex;align-items:center;gap:10px}
+.reminders-summary p:not(.eyebrow){font-size:.78rem;color:#aaa;margin:8px 0 0}
+.reminder-count{font:600 .75rem Inter,Arial,sans-serif;display:inline-grid;place-items:center;border:1px solid #a38b58;color:#dfc38b;min-width:27px;height:27px;border-radius:99px;padding:0 7px}
+.reminders-dialog{width:min(850px,calc(100% - 22px));max-height:90dvh;overflow:auto}
+.reminders-dialog-inner{padding:clamp(16px,3vw,28px)}
+.reminders-dialog .dialog-head{position:sticky;top:0;background:#0e0e0e;z-index:50;padding-bottom:14px}
+.reminder-list{padding:4px 0 22px}
+.reminder-item{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:18px;border-radius:10px;min-height:92px}
+.reminder-item-copy{display:grid;gap:6px;min-width:0}
+.reminder-item-copy strong{font:500 1.1rem Georgia,serif;overflow-wrap:anywhere}
+.reminder-item-copy small{font-size:.77rem;color:#a9a49b}
+.reminder-kind{font-size:.62rem;font-weight:700;letter-spacing:.16em;color:#d4af78;text-transform:uppercase}
+.reminder-empty{border:1px solid #343434;padding:24px;border-radius:10px;color:#c7c7c7;text-align:center}
+@media(max-width:700px){.lead-card,.property-card,.reminder-item{top:76px}.reminders-summary{padding:15px;align-items:flex-start}.reminders-summary h2{font-size:1.3rem}.reminder-item{flex-direction:column;align-items:stretch}.reminders-dialog .reminder-item{top:0}}
+@media(prefers-reduced-motion:reduce){.lead-card,.property-card,.reminder-item{transition:none}}
+
+/* Vista individual: una ficha protagonista por pantalla, con apilamiento progresivo. */
+#leadList, #propertyList { gap: 18px; padding-bottom: 12px; }
+#leadList > .lead-card, #propertyList > .property-card {
+  min-height: max(390px, calc(100dvh - 135px));
+  align-content: center;
+  align-items: center;
+  scroll-margin-top: 92px;
+  background: linear-gradient(155deg, #171717 0%, #090909 100%);
+}
+#reminderList { gap: 16px; }
+#reminderList > .reminder-item {
+  min-height: max(280px, calc(90dvh - 160px));
+  align-content: center;
+  scroll-margin-top: 95px;
+  background: linear-gradient(155deg, #171717 0%, #090909 100%);
+}
+@media (max-width: 700px) {
+  #leadList > .lead-card, #propertyList > .property-card {
+    min-height: max(360px, calc(100dvh - 100px));
+    top: 76px;
+    align-content: center;
+  }
+  #reminderList > .reminder-item {
+    min-height: max(250px, calc(90dvh - 140px));
+    top: 0;
+  }
+}
