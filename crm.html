@@ -21,7 +21,7 @@
     <span id="syncBadge" class="local-badge"><i></i> CRM protegido</span>
     <button id="logoutBtn" class="button button-quiet" type="button" hidden>Cerrar sesión</button>
     <button id="installBtn" class="button button-outline install-button" type="button">Instalar app</button>
-    <a class="reader-link" href="index.html">Abrir lector</a>
+
   </div>
 </header>
 <section id="authGate" class="auth-gate" aria-labelledby="authTitle">
@@ -47,10 +47,16 @@
       <p class="intro-copy">Organiza compradores, propietarios, rentas y aportantes en un solo lugar.</p>
     </div>
     <div class="intro-actions">
-      <button id="captureBtn" class="button button-outline" type="button">Leer captura o foto</button>
+
       <button id="newBtn" class="button button-gold" type="button" hidden>+ Nuevo cliente</button>
       <button id="newPropertyBtn" class="button button-gold" type="button" hidden>+ Nueva propiedad</button>
     </div>
+  </section>
+
+  <section class="reader-panel" aria-label="Herramientas de captura">
+    <div class="reader-panel-copy"><p class="eyebrow">HERRAMIENTAS DEL CRM</p><h2>Lector y captura de contactos</h2><p>Abre el lector únicamente cuando lo necesites.</p></div>
+    <div class="reader-panel-actions"><a class="button button-outline" href="index.html">Abrir lector</a><button id="captureBtn" class="button button-gold" type="button">Capturar lead</button></div>
+    <p id="readerPendingNotice" class="reader-pending-notice" hidden>Hay una captura del lector lista para revisar. Pulsa «Capturar lead».</p>
   </section>
 
   <section class="reminders-panel" id="remindersPanel" hidden>
@@ -121,7 +127,7 @@
   <section id="propertiesView" class="view active">
     <div class="section-head"><div><p class="eyebrow">INVENTARIO INMOBILIARIO</p><h2>Propiedades</h2></div><button id="propertyAddBtn" class="button button-gold" type="button">+ Nueva propiedad</button></div>
     <div class="property-operation-tabs" aria-label="Filtrar propiedades por operación"><button class="property-op active" data-property-operation="Venta" type="button">En venta</button><button class="property-op" data-property-operation="Renta" type="button">En renta</button></div>
-    <div class="property-type-tabs" aria-label="Filtrar por tipo de propiedad"><button class="property-type active" data-property-type="" type="button">Todas</button><button class="property-type" data-property-type="Departamento" type="button">Departamentos</button><button class="property-type" data-property-type="Casa" type="button">Casas</button><button class="property-type" data-property-type="Terreno" type="button">Terrenos</button><button class="property-type" data-property-type="Hectárea" type="button">Hectáreas</button></div>
+    <div class="property-type-tabs" aria-label="Filtrar por tipo de propiedad"><button class="property-type active" data-property-type="" type="button">Todas</button><button class="property-type" data-property-type="Departamento" type="button">Departamentos</button><button class="property-type" data-property-type="Casa" type="button">Casas</button><button class="property-type" data-property-type="Terreno" type="button">Terrenos</button><button class="property-type" data-property-type="Hectárea" type="button">Hectáreas</button><button class="property-type" data-property-type="Local comercial" type="button">Locales</button></div>
     <div class="property-search"><input id="propertySearch" type="search" placeholder="Buscar por nombre, zona o propietario" aria-label="Buscar propiedades"></div>
     <div id="propertyList" class="property-list"></div>
     <div id="emptyPropertyState" class="empty-state"><span class="empty-mark">RM</span><h3>Aún no hay propiedades en este grupo</h3><p>Agrega el inmueble para que aparezca aquí con su foto y ficha completa.</p><button class="button button-gold" id="emptyPropertyAddBtn" type="button">Agregar propiedad</button></div>
@@ -154,7 +160,7 @@
       <label>Tipo de operación<select id="operation" required><option value="">Selecciona</option><option>Compra</option><option>Venta</option><option>Renta</option><option>Aportación</option></select></label>
       <label id="budgetLabel">Presupuesto / monto de crédito (MXN)<input id="budget" type="text" inputmode="decimal" placeholder="$2,500,000" autocomplete="off"></label>
       <label id="creditTypeLabel">Tipo de crédito o pago<select id="creditType"><option value="">No definido</option><option>Infonavit</option><option>Infonavit Total</option><option>Cofinavit</option><option>Unamos Créditos</option><option>FOVISSSTE</option><option>Bancario</option><option>Recursos propios</option><option>Otro</option></select></label>
-      <label id="propertyTypeLabel">Tipo de inmueble<select id="propertyType"><option value="">Por definir</option><option>Casa</option><option>Departamento</option><option>Terreno</option><option>Hectárea</option></select></label>
+      <label id="propertyTypeLabel">Tipo de inmueble<select id="propertyType"><option value="">Por definir</option><option>Casa</option><option>Departamento</option><option>Terreno</option><option>Hectárea</option><option>Local comercial</option></select></label>
       <label>Tipo de zona<select id="zoneType"><option value="">Por definir</option><option>Ciudad</option><option>Playa</option><option>Montaña</option><option>Comunidad</option></select></label>
       <label>Zona / ciudad<input id="zone" placeholder="Ej. Tepic, Vallarta, Nuevo Nayarit"></label>
       <label>Origen del contacto<select id="source"><option value="Captura manual">Captura manual</option><option>Libreta</option><option>WhatsApp</option><option>Messenger</option><option>Marketplace</option><option>Referido</option><option>Otro</option></select></label>
@@ -181,7 +187,7 @@
     <div class="form-grid">
       <label class="span-2">Nombre o título<input id="propertyTitle" required placeholder="Ej. Casa con alberca en Nuevo Nayarit"></label>
       <label>Operación<select id="propertyOperation" required><option>Venta</option><option>Renta</option></select></label>
-      <label>Tipo de inmueble<select id="propertyKind" required><option>Departamento</option><option>Casa</option><option>Terreno</option><option>Hectárea</option></select></label>
+      <label>Tipo de inmueble<select id="propertyKind" required><option>Departamento</option><option>Casa</option><option>Terreno</option><option>Hectárea</option><option>Local comercial</option></select></label>
       <label>Precio en pesos (MXN)<input id="propertyPrice" type="text" inputmode="decimal" required placeholder="$2,500,000" autocomplete="off"></label>
       <label>Superficie<input id="propertySurface" type="text" inputmode="decimal" placeholder="Ej. 1,250.50" autocomplete="off"></label>
       <label>Unidad<select id="propertySurfaceUnit"><option>m²</option><option>ha</option></select></label>

@@ -371,7 +371,7 @@
     if (user) {
       $("accountEmail").textContent = user.email || "Sesión activa";
       await refresh();
-      receiveReaderCapture();
+      updateReaderPendingNotice();
     } else {
       leads = [];
       properties = []; renderStats(); renderLeads(); void renderProperties(); renderCalendar(); renderReminders();
@@ -679,7 +679,10 @@
     });
     $("propertyDialog").showModal();
   }
+  let refreshInProgress = false;
   async function refresh() {
+    if (refreshInProgress) return;
+    refreshInProgress = true;
     try {
       let synced = false;
       if (currentUser) {
@@ -698,6 +701,7 @@
       if (currentUser && synced) setStatus("Sincronizado con Supabase.");
       else if (currentUser && !navigator.onLine) setStatus("Sin conexión: los cambios quedan guardados aquí y se sincronizarán al reconectar.");
     } catch (error) { setStatus(error.message); }
+    finally { refreshInProgress = false; }
   }
 
   function openNewLead(prefill = {}) {
@@ -944,12 +948,15 @@
     let name = labeledName || lines.find(line => /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,3}$/.test(line) && !skip.test(line)) || "";
     const lower = text.toLowerCase();
     const operation = /\b(renta|rentar|alquiler|rent(o|ar))\b/.test(lower) ? "Renta" : /\b(vendo|venta|vender)\b/.test(lower) ? "Venta" : /\b(aportaci[oó]n|aportante|invertir|inversionista)\b/.test(lower) ? "Aportación" : /\b(comprar|compra|busco|interesa)\b/.test(lower) ? "Compra" : "";
-    const propertyType = /departamento|depa|condominio/.test(lower) ? "Departamento" : /hect[aá]rea/.test(lower) ? "Hectárea" : /terreno|lote/.test(lower) ? "Terreno" : /casa/.test(lower) ? "Casa" : "";
+    const propertyType = /local comercial|local|oficina|consultorio/.test(lower) ? "Local comercial" : /departamento|depa|condominio/.test(lower) ? "Departamento" : /hect[aá]rea/.test(lower) ? "Hectárea" : /terreno|lote/.test(lower) ? "Terreno" : /casa/.test(lower) ? "Casa" : "";
     const creditType = /fovissste/.test(lower) ? "FOVISSSTE" : /infonavit/.test(lower) ? "Infonavit" : /bancari[oa]|hipoteca/.test(lower) ? "Bancario" : /contado|recursos propios/.test(lower) ? "Recursos propios" : "";
     const clientType = /busco\s+(?:una\s+)?renta|buscando\s+(?:una\s+)?renta|rentar\s+(?:una\s+)?casa/.test(lower) ? "Busca renta" : /ofrezco\s+(?:en\s+)?renta|rento\s+(?:mi|una)?\s*(?:casa|departamento|propiedad)/.test(lower) ? "Ofrece renta" : /vendo\s+(?:mi\s+)?(?:casa|departamento|propiedad)|propietari[oa].*venta/.test(lower) ? "Propietario vendedor" : /aportante|inversionista|invertir/.test(lower) ? "Aportante o inversionista" : /comprar|busco|interesa/.test(lower) ? "Comprador" : "";
     return { name, phone, email, budget, operation, propertyType, creditType, clientType };
   }
-  $("captureBtn").addEventListener("click", () => $("captureDialog").showModal());
+  $("captureBtn").addEventListener("click", () => {
+    if (!receiveReaderCapture()) $("captureDialog").showModal();
+    updateReaderPendingNotice();
+  });
   function drawCaptureImage() {
     if (!currentImage) return;
     const sourceWidth = currentImage.naturalWidth;
@@ -1162,15 +1169,20 @@
     const prefill = { ...hints, source: sourceText, comments: `Texto de la captura para revisar:\n${text}` };
     $("captureDialog").close(); openNewLead(prefill);
   });
+  function updateReaderPendingNotice() {
+    let pending = false;
+    try { pending = Boolean(JSON.parse(localStorage.getItem("crm_pending_capture_v1") || "null")?.texto?.trim()); } catch (_) {}
+    $("readerPendingNotice").hidden = !pending;
+  }
   function receiveReaderCapture() {
     let capture;
     try {
       const saved = localStorage.getItem("crm_pending_capture_v1");
-      if (!saved) return;
+      if (!saved) return false;
       capture = JSON.parse(saved);
-    } catch (_) { return; }
+    } catch (_) { return false; }
     const text = String(capture?.texto || "").trim();
-    if (!text) return;
+    if (!text) return false;
     const source = String(capture.origen || "");
     if ([...$("captureSource").options].some(option => option.value === source || option.textContent === source)) {
       $("captureSource").value = source;
@@ -1180,6 +1192,7 @@
     $("ocrStatus").textContent = `Texto recibido del lector (${text.length} caracteres). Revísalo y pulsa “Usar texto para nuevo contacto”.`;
     localStorage.removeItem("crm_pending_capture_v1");
     if (!$("captureDialog").open) $("captureDialog").showModal();
+    return true;
   }
 
   function renderCalendar() {
@@ -1316,6 +1329,15 @@
     const { error } = await supabaseClient.auth.signOut();
     if (error) setStatus(`No se pudo cerrar sesión: ${error.message}`);
   });
+  // Refrescar también cuando el CRM permanece abierto en otro dispositivo.
+  // Se evita sobrescribir el formulario mientras el usuario lo está editando.
+  function refreshWhenIdle() {
+    if (!currentUser || document.hidden || !navigator.onLine) return;
+    if (Array.from(document.querySelectorAll("dialog[open]")).length) return;
+    void refresh();
+  }
+  window.setInterval(refreshWhenIdle, 45000);
+  window.addEventListener("focus", refreshWhenIdle);
   window.addEventListener("online", () => { if (currentUser) void refresh(); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden && currentUser) void refresh(); });
 
