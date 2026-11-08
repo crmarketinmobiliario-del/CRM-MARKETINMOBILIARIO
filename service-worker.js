@@ -1,5 +1,5 @@
 
-const CACHE = "crm-capture-shell-v20";
+const CACHE = "crm-capture-shell-v21";
 
 const SHELL = [
   "./",
