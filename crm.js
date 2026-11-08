@@ -85,8 +85,38 @@
       transaction.onerror = () => reject(transaction.error || new Error("No se pudieron guardar las propiedades."));
     });
   }
+  // Solo se envían automáticamente cambios hechos explícitamente en este dispositivo.
+  // Un registro antiguo ausente de Supabase nunca debe recrearse por accidente.
+  const DIRTY_PREFIX = "crm-pending-v1:";
+  function dirtyKey(table) { return DIRTY_PREFIX + (currentUser?.id || "anonymous") + ":" + table; }
+  function dirtyIds(table) {
+    try { return new Set(JSON.parse(localStorage.getItem(dirtyKey(table)) || "[]")); }
+    catch (_) { return new Set(); }
+  }
+  function markDirty(table,id) { const ids=dirtyIds(table); ids.add(id); localStorage.setItem(dirtyKey(table),JSON.stringify([...ids])); }
+  function clearDirty(table,id) { const ids=dirtyIds(table); ids.delete(id); localStorage.setItem(dirtyKey(table),JSON.stringify([...ids])); }
+  async function reconcileLocalStore(storeName, stored, cloudRows, dirty) {
+    const database=await openDB();
+    await new Promise((resolve,reject)=>{
+      const transaction=database.transaction(storeName,"readwrite");
+      const store=transaction.objectStore(storeName);
+      const cloudIds=new Set(cloudRows.map(item=>item.id));
+      for (const item of stored) {
+        if (item.ownerId && item.ownerId!==currentUser.id) continue;
+        // Conservamos copias antiguas ausentes de la nube, por seguridad,
+        // pero no las re-publicamos ni las mostramos como registros activos.
+        if (cloudIds.has(item.id)) continue;
+        if (dirty.has(item.id)) continue;
+        // No borrar aquí: un registro anterior podría contener cambios locales sin respaldo.
+      }
+      for (const item of cloudRows) store.put(item);
+      transaction.oncomplete=resolve;
+      transaction.onerror=()=>reject(transaction.error || new Error("Error al actualizar la copia local"));
+    });
+  }
   async function putLead(lead) {
     if (currentUser) lead.ownerId = currentUser.id;
+    markDirty(CLOUD_TABLE, lead.id);
     const database = await openDB();
     await new Promise((resolve, reject) => {
       const transaction = database.transaction("leads", "readwrite");
@@ -97,6 +127,7 @@
     if (!currentUser || !navigator.onLine) return { synced: false };
     try {
       const { error } = await supabaseClient.from(CLOUD_TABLE).upsert(toDatabaseLead(lead), { onConflict: "id" });
+      if (!error) clearDirty(CLOUD_TABLE,lead.id);
       return error ? { synced: false, error } : { synced: true };
     } catch (error) { return { synced: false, error }; }
   }
@@ -267,6 +298,7 @@
   async function putProperty(property) {
     if (currentUser) property.ownerId = currentUser.id;
     property.updatedAt = new Date().toISOString();
+    markDirty(PROPERTIES_TABLE,property.id);
     await saveLocalProperty(property);
     if (!currentUser || !navigator.onLine) return { synced:false };
     try {
@@ -280,6 +312,7 @@
       await saveLocalProperty(property);
       const { error } = await supabaseClient.from(PROPERTIES_TABLE).upsert(toDatabaseProperty(property), { onConflict:"id" });
       if (error) throw error;
+      clearDirty(PROPERTIES_TABLE,property.id);
       return { synced:true };
     } catch (error) { return { synced:false, error }; }
   }
@@ -294,66 +327,65 @@
     return data.signedUrl;
   }
   async function syncPropertiesWithCloud() {
-    const stored = await getAllProperties();
-    const local = stored.filter(property => !property.ownerId || property.ownerId === currentUser.id)
-      .map(property => ({ ...property, id:isUuid(property.id) ? property.id : uuid(), ownerId:currentUser.id }));
-    if (!navigator.onLine) {
-      if (local.length) await putManyProperties(local);
-      properties = local;
-      return false;
-    }
-    const { data:initialRows, error:initialError } = await supabaseClient.from(PROPERTIES_TABLE).select("*");
+    const stored=await getAllProperties();
+    const local=stored.filter(item=>!item.ownerId || item.ownerId===currentUser.id);
+    if (!navigator.onLine) { properties=local; return false; }
+    const {data:initialRows,error:initialError}=await supabaseClient.from(PROPERTIES_TABLE).select("*");
     if (initialError) throw initialError;
-    const cloudById = new Map((initialRows || []).map(row => [row.id, fromDatabaseProperty(row)]));
-    const pending = local.filter(property => {
-      const cloud = cloudById.get(property.id);
-      return !cloud || recordTime(property.updatedAt) > recordTime(cloud.updatedAt) || Boolean(property.photoDataUrl && !property.photoPath);
-    });
+    const cloudById=new Map((initialRows||[]).map(row=>[row.id,fromDatabaseProperty(row)]));
+    const dirty=dirtyIds(PROPERTIES_TABLE);
+    const pending=local.filter(item=>dirty.has(item.id));
     for (const property of pending) {
+      // Si alguien eliminó este registro en otro dispositivo y aquí fue editado,
+      // evitamos recrearlo automáticamente: requiere revisión manual.
+      if (!cloudById.has(property.id) && property.createdAt &&
+          recordTime(property.createdAt)<recordTime(property.updatedAt)-1000) {
+        throw new Error("Hay una propiedad modificada localmente que ya no está en la nube. Revisa antes de recuperarla.");
+      }
       await uploadPropertyPhoto(property);
-      const { error } = await supabaseClient.from(PROPERTIES_TABLE).upsert(toDatabaseProperty(property), { onConflict:"id" });
+      const {error}=await supabaseClient.from(PROPERTIES_TABLE).upsert(toDatabaseProperty(property),{onConflict:"id"});
       if (error) throw error;
+      clearDirty(PROPERTIES_TABLE,property.id);
     }
-    const { data:finalRows, error:finalError } = await supabaseClient.from(PROPERTIES_TABLE).select("*").order("updated_at", { ascending:false });
+    const {data:finalRows,error:finalError}=await supabaseClient.from(PROPERTIES_TABLE).select("*").order("updated_at",{ascending:false});
     if (finalError) throw finalError;
-    const synced = (finalRows || []).map(fromDatabaseProperty);
-    const otherUsers = stored.filter(property => property.ownerId && property.ownerId !== currentUser.id);
-    await putManyProperties([...otherUsers, ...local.filter(property => pending.some(item => item.id === property.id)), ...synced]);
-    properties = synced;
+    const synced=(finalRows||[]).map(fromDatabaseProperty);
+    await reconcileLocalStore("properties",stored,synced,dirtyIds(PROPERTIES_TABLE));
+    properties=synced;
     return true;
   }
   function recordTime(value) { const time = Date.parse(value || ""); return Number.isFinite(time) ? time : 0; }
   async function syncWithCloud() {
-    const stored = await getAllLeads();
-    const local = stored.filter(lead => !lead.ownerId || lead.ownerId === currentUser.id)
-      .map(lead => ({ ...lead, id: isUuid(lead.id) ? lead.id : uuid(), ownerId: currentUser.id }));
+    const stored=await getAllLeads();
+    const local=stored.filter(item=>!item.ownerId || item.ownerId===currentUser.id);
     if (!navigator.onLine) {
-      if (local.length) await putMany(local);
-      leads = local;
-      properties = (await getAllProperties()).filter(property => !property.ownerId || property.ownerId === currentUser.id);
+      leads=local;
+      properties=(await getAllProperties()).filter(item=>!item.ownerId || item.ownerId===currentUser.id);
       return false;
     }
-    const { data: initialRows, error: initialError } = await supabaseClient.from(CLOUD_TABLE).select("*");
+    const {data:initialRows,error:initialError}=await supabaseClient.from(CLOUD_TABLE).select("*");
     if (initialError) throw initialError;
-    const cloudById = new Map((initialRows || []).map(row => [row.id, fromDatabaseLead(row)]));
-    const pending = local.filter(lead => {
-      const cloud = cloudById.get(lead.id);
-      return !cloud || recordTime(lead.updatedAt) > recordTime(cloud.updatedAt);
-    });
-    if (pending.length) {
-      const { error } = await supabaseClient.from(CLOUD_TABLE).upsert(pending.map(toDatabaseLead), { onConflict: "id" });
+    const cloudById=new Map((initialRows||[]).map(row=>[row.id,fromDatabaseLead(row)]));
+    const dirty=dirtyIds(CLOUD_TABLE);
+    const pending=local.filter(item=>dirty.has(item.id));
+    for (const lead of pending) {
+      if (!cloudById.has(lead.id) && lead.createdAt &&
+          recordTime(lead.createdAt)<recordTime(lead.updatedAt)-1000) {
+        throw new Error("Un contacto editado aquí ya no está en Supabase. Revisa la eliminación antes de recuperarlo.");
+      }
+      const {error}=await supabaseClient.from(CLOUD_TABLE).upsert(toDatabaseLead(lead),{onConflict:"id"});
       if (error) throw error;
+      clearDirty(CLOUD_TABLE,lead.id);
     }
-    const { data: finalRows, error: finalError } = await supabaseClient.from(CLOUD_TABLE).select("*").order("updated_at", { ascending: false });
+    const {data:finalRows,error:finalError}=await supabaseClient.from(CLOUD_TABLE).select("*").order("updated_at",{ascending:false});
     if (finalError) throw finalError;
-    const synced = (finalRows || []).map(fromDatabaseLead);
-    const otherUsers = stored.filter(lead => lead.ownerId && lead.ownerId !== currentUser.id);
-    await putMany([...otherUsers, ...synced]);
-    leads = synced;
+    const synced=(finalRows||[]).map(fromDatabaseLead);
+    await reconcileLocalStore("leads",stored,synced,dirtyIds(CLOUD_TABLE));
+    leads=synced;
     try { await syncPropertiesWithCloud(); }
     catch (error) {
-      properties = (await getAllProperties()).filter(property => !property.ownerId || property.ownerId === currentUser.id);
-      setStatus(`Contactos sincronizados, pero PROPIEDADES NO: ${error.message}. Revisa el registro pendiente en esta computadora.`);
+      properties=(await getAllProperties()).filter(item=>!item.ownerId || item.ownerId===currentUser.id);
+      setStatus(`Contactos sincronizados, pero PROPIEDADES NO: ${error.message}`);
       return false;
     }
     return true;
@@ -621,6 +653,7 @@
     // Confirmar que el registro ya no exista antes de retirar la copia local.
     const { data:check, error:checkError } = await supabaseClient.from(PROPERTIES_TABLE).select("id").eq("id", id);
     if (checkError || (check && check.length)) { alert("No se confirmó el borrado en Supabase. No se eliminó la copia local."); return; }
+    clearDirty(PROPERTIES_TABLE,id);
     await deleteLocalRecord("properties", id);
     properties = properties.filter(item => item.id !== id);
     const dates = publicationDates(); delete dates[id]; localStorage.setItem(PUBLICATION_KEY, JSON.stringify(dates));
@@ -699,7 +732,7 @@
         properties = [];
       }
       renderStats(); renderLeads(); void renderProperties(); renderCalendar(); renderReminders();
-      if (currentUser && synced) setStatus("Sincronizado con Supabase.");
+      if (currentUser && synced) setStatus("Sincronizado con Supabase · " + new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}) + ".");
       else if (currentUser && !navigator.onLine) setStatus("Sin conexión: los cambios quedan guardados aquí y se sincronizarán al reconectar.");
     } catch (error) { setStatus(error.message); }
     finally { refreshInProgress = false; }
@@ -809,6 +842,7 @@
     if (error) { alert("No se pudo eliminar en Supabase: " + error.message); return; }
     const { data:check, error:checkError } = await supabaseClient.from(CLOUD_TABLE).select("id").eq("id", id);
     if (checkError || (check && check.length)) { alert("No se confirmó la eliminación en Supabase; se conservó la copia local."); return; }
+    clearDirty(CLOUD_TABLE,id);
     await deleteLocalRecord("leads", id);
     leads = leads.filter(item => item.id !== id);
     $("leadDialog").close();
