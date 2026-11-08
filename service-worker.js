@@ -104,22 +104,19 @@ self.addEventListener("push", event => {
     }
   } catch (_) {}
 
-  event.waitUntil(
-    self.registration.showNotification(
-      message.title,
-      {
-        body: message.body,
+ 
+event.waitUntil(
+  self.registration.showNotification(message.title, {
+    body: message.body,
+    icon: "./icon-rm-192.png",
+    badge: "./badge-crm-96.png",
+    tag: message.tag || "crm-reminders",
+    data: {
+      url: message.url || "./crm.html"
+    }
+  })
+);
 
-        icon: "./icon-rm-192.png",
-
-        tag: message.tag || "crm-reminders",
-
-        data: {
-          url: message.url || "./crm.html"
-        }
-      }
-    )
-  );
 });
 
 // ABRIR CRM AL TOCAR LA NOTIFICACIÓN
