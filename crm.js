@@ -95,8 +95,10 @@
       transaction.onerror = () => reject(transaction.error || new Error("No se pudo guardar el contacto."));
     });
     if (!currentUser || !navigator.onLine) return { synced: false };
-    const { error } = await supabaseClient.from(CLOUD_TABLE).upsert(toDatabaseLead(lead), { onConflict: "id" });
-    return error ? { synced: false, error } : { synced: true };
+    try {
+      const { error } = await supabaseClient.from(CLOUD_TABLE).upsert(toDatabaseLead(lead), { onConflict: "id" });
+      return error ? { synced: false, error } : { synced: true };
+    } catch (error) { return { synced: false, error }; }
   }
   async function putMany(records) {
     const database = await openDB();
@@ -268,6 +270,12 @@
     await saveLocalProperty(property);
     if (!currentUser || !navigator.onLine) return { synced:false };
     try {
+      if (property.ownerLeadId) {
+        const owner = leads.find(item => item.id === property.ownerLeadId);
+        if (!owner) throw new Error("El propietario vinculado no existe en tus contactos.");
+        const { error: ownerError } = await supabaseClient.from(CLOUD_TABLE).upsert(toDatabaseLead(owner), { onConflict:"id" });
+        if (ownerError) throw new Error(`No se pudo sincronizar primero al propietario: ${ownerError.message}`);
+      }
       await uploadPropertyPhoto(property);
       await saveLocalProperty(property);
       const { error } = await supabaseClient.from(PROPERTIES_TABLE).upsert(toDatabaseProperty(property), { onConflict:"id" });
@@ -366,7 +374,7 @@
       receiveReaderCapture();
     } else {
       leads = [];
-      properties = []; renderStats(); renderLeads(); void renderProperties(); renderCalendar();
+      properties = []; renderStats(); renderLeads(); void renderProperties(); renderCalendar(); renderReminders();
     }
   }
   async function initializeSupabase() {
@@ -431,8 +439,9 @@
     const op = $("operationFilter").value;
     const stage = $("stageFilter").value;
     const config = {
-      buyers:{ title:"Compradores", eyebrow:"DIRECTORIO DE COMPRADORES", types:["Comprador","Busca renta"], button:"+ Agregar comprador", defaultType:"Comprador" },
-      sellers:{ title:"Vendedores", eyebrow:"PROPIETARIOS Y RENTAS", types:["Propietario vendedor","Ofrece renta"], button:"+ Agregar vendedor", defaultType:"Propietario vendedor" },
+      buyers:{ title:"Compradores", eyebrow:"DIRECTORIO DE COMPRADORES", types:["Comprador"], button:"+ Agregar comprador", defaultType:"Comprador" },
+      sellers:{ title:"Propietarios", eyebrow:"PROPIETARIOS · VENTA Y RENTA", types:["Propietario vendedor","Ofrece renta"], button:"+ Agregar propietario", defaultType:"Propietario vendedor" },
+      renters:{ title:"Buscan renta", eyebrow:"PROSPECTOS DE ARRENDAMIENTO", types:["Busca renta"], button:"+ Agregar interesado", defaultType:"Busca renta" },
       investors:{ title:"Inversionistas", eyebrow:"APORTANTES Y SOCIOS", types:["Aportante o inversionista"], button:"+ Agregar inversionista", defaultType:"Aportante o inversionista" }
     }[currentSection] || { title:"Compradores", eyebrow:"DIRECTORIO DE COMPRADORES", types:["Comprador","Busca renta"], button:"+ Agregar comprador", defaultType:"Comprador" };
     $("directoryTitle").textContent = config.title;
@@ -498,6 +507,47 @@
     }));
     $("propertyList").querySelectorAll("[data-property-edit]").forEach(button => button.addEventListener("click", () => editProperty(button.dataset.propertyEdit)));
   }
+  const PUBLICATION_KEY = "crm_tm_publicaciones_v1";
+  function publicationDates() {
+    try { return JSON.parse(localStorage.getItem(PUBLICATION_KEY) || "{}"); } catch (_) { return {}; }
+  }
+  function markPropertyPublished(id) {
+    if (!id) return;
+    const dates = publicationDates(); dates[id] = new Date().toISOString();
+    localStorage.setItem(PUBLICATION_KEY, JSON.stringify(dates));
+    renderReminders();
+  }
+  function publicationDue(property) {
+    const last = publicationDates()[property.id];
+    const base = Date.parse(last || property.createdAt || property.updatedAt || "");
+    return Number.isFinite(base) && Date.now() - base >= 3 * 86400000;
+  }
+  function renderReminders() {
+    if (!currentUser) { $("remindersPanel").hidden = true; return; }
+    $("remindersPanel").hidden = false;
+    const dueProperties = properties.filter(item => !item.archived && publicationDue(item));
+    const dueContacts = leads.filter(item => !item.archived && item.nextContact && new Date(item.nextContact).getTime() <= Date.now());
+    const entries = [
+      ...dueProperties.map(item => `<div class="reminder-item"><span>📣 Publicar: <strong>${esc(item.title)}</strong></span><button class="button button-outline" type="button" data-reminder-property="${esc(item.id)}">Abrir ficha</button></div>`),
+      ...dueContacts.map(item => `<div class="reminder-item"><span>📞 ${esc(item.nextChannel || "Seguimiento")}: <strong>${esc(item.name)}</strong> · ${esc(localDateTime(item.nextContact))}</span><button class="button button-outline" type="button" data-reminder-lead="${esc(item.id)}">Abrir contacto</button></div>`)
+    ];
+    $("reminderList").innerHTML = entries.length ? entries.join("") : '<p class="reminder-note">Sin recordatorios vencidos. Los seguimientos programados aparecerán aquí.</p>';
+    $("reminderList").querySelectorAll("[data-reminder-property]").forEach(button => button.addEventListener("click", () => editProperty(button.dataset.reminderProperty)));
+    $("reminderList").querySelectorAll("[data-reminder-lead]").forEach(button => button.addEventListener("click", () => editLead(button.dataset.reminderLead)));
+  }
+  $("markPublishedBtn").addEventListener("click", () => {
+    const id = $("propertyId").value;
+    if (!id) return;
+    markPropertyPublished(id);
+    $("lastPublishedLabel").textContent = "Publicada hoy. Próxima revisión en 3 días (en este dispositivo).";
+    setStatus("Publicación registrada en este dispositivo.");
+  });
+  $("enableNotifications").addEventListener("click", async () => {
+    if (!("Notification" in window)) { $("notificationHelp").textContent = "Este navegador no admite notificaciones."; return; }
+    const permission = await Notification.requestPermission();
+    $("notificationHelp").textContent = permission === "granted" ? "Avisos permitidos. En esta versión el CRM debe estar abierto para emitirlos; el envío push en segundo plano está pendiente." : "Notificaciones no autorizadas. Tus pendientes siguen visibles en la agenda.";
+    if (permission === "granted") new Notification("CRM Torres Maldonado", { body:"Avisos habilitados mientras el CRM esté abierto." });
+  });
   function ownerName(id) { return leads.find(lead => lead.id === id)?.name || ""; }
   function setPropertyOperation(operation) {
     propertyOperationFilter = operation;
@@ -513,6 +563,7 @@
     $("propertyTitleReviewed").checked = false; $("propertyAgreementSigned").checked = false;
     $("propertyOwner").innerHTML = `<option value="">Selecciona propietario</option>` + owners.map(owner => `<option value="${esc(owner.id)}">${esc(owner.name)} · ${esc(owner.phone || "sin teléfono")}</option>`).join("");
     propertyPhotoDataUrl = ""; $("propertyPhotoPreview").hidden = true; $("propertyPhotoPreview").innerHTML = "";
+    $("publicationReminderControls").hidden = true;
     $("propertyDialog").showModal();
   }
   function editProperty(id) {
@@ -520,8 +571,11 @@
     $("propertyForm").reset(); $("propertyFormError").textContent = "";
     $("propertyDialogTitle").textContent = "Ficha de propiedad";
     $("propertyId").value = property.id; $("propertyTitle").value = property.title;
+    $("publicationReminderControls").hidden = false;
+    const lastPublished = publicationDates()[property.id];
+    $("lastPublishedLabel").textContent = lastPublished ? `Última publicación registrada: ${localDateTime(lastPublished)}. ${publicationDue(property) ? "Ya corresponde republicar." : "Próxima revisión a los 3 días."}` : "Sin publicación registrada; el recordatorio se activa a los 3 días del alta.";
     $("propertyOperation").value = property.operation; $("propertyKind").value = property.propertyType;
-    $("propertyPrice").value = formatMoneyInput(property.price); $("propertySurface").value = property.surface || "";
+    $("propertyPrice").value = formatMoneyInput(property.price); $("propertySurface").value = property.surface === "" ? "" : formatDecimalInput(property.surface);
     $("propertySurfaceUnit").value = property.surfaceUnit || "m²"; $("propertyZone").value = property.zone;
     $("propertyAddress").value = property.address || ""; $("propertyStatus").value = property.status || "Revisión";
     $("propertyDescription").value = property.description || "";
@@ -553,7 +607,7 @@
         leads = [];
         properties = [];
       }
-      renderStats(); renderLeads(); void renderProperties(); renderCalendar();
+      renderStats(); renderLeads(); void renderProperties(); renderCalendar(); renderReminders();
       if (currentUser && synced) setStatus("Sincronizado con Supabase.");
       else if (currentUser && !navigator.onLine) setStatus("Sin conexión: los cambios quedan guardados aquí y se sincronizarán al reconectar.");
     } catch (error) { setStatus(error.message); }
@@ -573,10 +627,13 @@
     if (prefill.clientType) $("clientType").value = prefill.clientType;
     if (!prefill.clientType && currentSection === "sellers") $("clientType").value = "Propietario vendedor";
     if (!prefill.clientType && currentSection === "investors") $("clientType").value = "Aportante o inversionista";
+    if (!prefill.clientType && currentSection === "renters") $("clientType").value = "Busca renta";
     if (!prefill.clientType && currentSection === "buyers") $("clientType").value = "Comprador";
     if (!prefill.operation && ["sellers","investors"].includes(currentSection)) $("operation").value = currentSection === "sellers" ? "Venta" : "Aportación";
+    if (!prefill.operation && currentSection === "renters") $("operation").value = "Renta";
     if (!prefill.operation && currentSection === "buyers") $("operation").value = "Compra";
     fillStageOptions();
+    updateContactQuestions();
     $("leadDialog").showModal();
     if (prefill.name) $("clientType").focus(); else $("name").focus();
   }
@@ -593,6 +650,7 @@
     $("activityBox").hidden = activities.length === 0;
     $("activityHistory").innerHTML = activities.slice(0,12).map(item => `<div class="activity-row"><span>${esc(item.action)}</span><small>${esc(localDateTime(item.date))} · ${esc(item.channel || "")}</small></div>`).join("");
     fillStageOptions(lead.stage);
+    updateContactQuestions();
     $("leadDialog").showModal(); $("name").focus();
   }
   function readForm() {
@@ -601,7 +659,7 @@
     const clientType = $("clientType").value;
     return {
       id: old?.id || uuid(), name: $("name").value.trim(), phone: $("phone").value.trim(), email: $("email").value.trim(),
-      clientType, operation: $("operation").value, budget: $("budget").value ? Number($("budget").value) : null,
+      clientType, operation: $("operation").value, budget: $("budget").value ? parseMoney($("budget").value) : null,
       creditType: $("creditType").value, propertyType: $("propertyType").value, zoneType: $("zoneType").value,
       zone: $("zone").value.trim(), source: $("source").value, stage: $("stage").value,
       startDate: $("startDate").value || toDateInput(new Date()), nextContact: $("nextContact").value || "", nextChannel: $("nextChannel").value,
@@ -615,6 +673,23 @@
     if (!phone && !email) return null;
     return leads.find(item => item.id !== lead.id && !item.archived && ((phone && phoneDigits(item.phone) === phone) || (email && item.email?.trim().toLowerCase() === email))) || null;
   }
+  // Formulario contextual sin cambiar el esquema actual de Supabase.
+  function updateContactQuestions() {
+    const type = $("clientType").value;
+    const owner = ["Propietario vendedor", "Ofrece renta"].includes(type);
+    const renter = type === "Busca renta";
+    const investor = type === "Aportante o inversionista";
+    $("creditTypeLabel").hidden = owner || renter || investor;
+    $("budgetLabel").firstChild.textContent = owner ? "Precio o renta estimada (MXN)" : renter ? "Presupuesto mensual (MXN)" : investor ? "Capital disponible (MXN)" : "Presupuesto / monto de crédito (MXN)";
+    $("propertyTypeLabel").firstChild.textContent = owner ? "Inmueble que ofrece" : "Tipo de inmueble que busca";
+    $("rentStartLabel").hidden = !renter && type !== "Ofrece renta";
+    $("rentEndLabel").hidden = !renter && type !== "Ofrece renta";
+    if (owner || renter || investor) $("creditType").value = "";
+    if (type === "Ofrece renta" || renter) $("operation").value = "Renta";
+    if (type === "Propietario vendedor" && !["Venta", "Aportación"].includes($("operation").value)) $("operation").value = "Venta";
+    if (type === "Comprador" && $("operation").value !== "Compra") $("operation").value = "Compra";
+  }
+  $("clientType").addEventListener("change", updateContactQuestions);
   $("leadForm").addEventListener("submit", async event => {
     event.preventDefault(); setFormError("");
     const lead = readForm();
@@ -700,13 +775,19 @@
     const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     return "$" + grouped + (pieces.length > 1 ? "." + pieces.slice(1).join("").slice(0, 2) : "");
   }
-  for (const id of ["propertyPrice", "budget"]) {
+  function formatDecimalInput(value) {
+    const raw = String(value ?? "").replace(/[^0-9.]/g, "");
+    if (!raw) return "";
+    const parts = raw.split(".");
+    return (parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",") || "0") + (parts.length > 1 ? "." + parts.slice(1).join("").slice(0, 2) : "");
+  }
+  for (const id of ["propertyPrice", "budget", "propertySurface"]) {
     const input = $(id);
     input.addEventListener("input", () => {
       const oldLength = input.value.length;
       const oldPosition = input.selectionStart ?? oldLength;
       const digitsBefore = input.value.slice(0, oldPosition).replace(/[^0-9.]/g, "").length;
-      const formatted = formatMoneyInput(input.value);
+      const formatted = id === "propertySurface" ? formatDecimalInput(input.value) : formatMoneyInput(input.value);
       input.value = formatted;
       let pos = 0, seen = 0;
       while (pos < formatted.length && seen < digitsBefore) {
@@ -724,7 +805,7 @@
     const property = {
       id, ownerId:currentUser?.id || "", title:$("propertyTitle").value.trim(), operation:$("propertyOperation").value,
       propertyType:$("propertyKind").value, price:parseMoney($("propertyPrice").value),
-      surface:$("propertySurface").value, surfaceUnit:$("propertySurfaceUnit").value,
+      surface:$("propertySurface").value ? parseMoney($("propertySurface").value) : "", surfaceUnit:$("propertySurfaceUnit").value,
       zone:$("propertyZone").value.trim(), address:$("propertyAddress").value.trim(), ownerLeadId:$("propertyOwner").value,
       status:$("propertyStatus").value, titleReviewed:$("propertyTitleReviewed").checked,
       agreementSigned:$("propertyAgreementSigned").checked,
@@ -742,7 +823,7 @@
       const saved = await putProperty(property);
       properties = await getAllProperties();
       properties = properties.filter(item => !item.ownerId || !currentUser || item.ownerId === currentUser.id);
-      $("propertyDialog").close(); renderProperties();
+      $("propertyDialog").close(); renderProperties(); renderReminders();
       if (!saved.synced) {
         const warning = saved.error ? `No se sincronizó con Supabase: ${saved.error.message}` : "Sin conexión: pendiente de sincronizar con Supabase.";
         setStatus(`Propiedad guardada solo en este dispositivo. ${warning}`);

@@ -55,3 +55,19 @@ body,.topbar{background:#000}.topbar{border-color:#383838}.lead-card,.property-c
 .publication-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .publication-help{font-size:.73rem;color:var(--muted);line-height:1.5;grid-column:1/-1}
 @media(max-width:760px){.publication-dialog{width:100vw!important;max-width:none!important;height:100dvh!important;max-height:none!important}.publication-grid{grid-template-columns:1fr}.publication-fields{grid-template-columns:1fr 1fr}.publication-preview{padding-bottom:24px}#pubCanvas{max-height:48vh}.publication-buttons{grid-template-columns:1fr 1fr}}
+
+/* Tarjetas apiladas al desplazarse: contactos y propiedades. */
+.lead-list, .property-list { isolation: isolate; }
+.lead-card, .property-card { position: sticky; top: 92px; box-shadow: 0 12px 25px rgba(0,0,0,.55); }
+.lead-card:nth-child(n), .property-card:nth-child(n) { z-index: 1; }
+/* Cada tarjeta siguiente se pinta por encima de la anterior. */
+.lead-card + .lead-card, .property-card + .property-card { z-index: 2; }
+@media(max-width:620px) { .lead-card, .property-card { top: 78px; } }
+@media(prefers-reduced-motion:reduce) { .lead-card, .property-card { scroll-behavior:auto; } }
+
+/* Agenda de trabajo y avisos de publicación */
+.reminders-panel { margin: 18px 0 24px; padding: 20px; border: 1px solid rgba(207,169,85,.35); border-radius: 18px; background: rgba(24,24,24,.85); }
+.reminder-list { display: grid; gap: 10px; }
+.reminder-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border-radius: 12px; border: 1px solid rgba(207,169,85,.2); }
+.reminder-item .button { white-space: nowrap; }
+@media(max-width:600px) { .reminder-item { align-items: stretch; flex-direction: column; } }

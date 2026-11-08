@@ -14,7 +14,7 @@
 <header class="topbar">
   <a class="brand" href="crm.html" aria-label="CRM Torrez y Maldonado">
     <span class="brand-mark" aria-hidden="true">RM</span>
-    <span class="brand-copy"><strong>TORREZ &amp; MALDONADO</strong><small>CRM INMOBILIARIO</small></span>
+    <span class="brand-copy"><strong>TORRES MALDONADO</strong><small>CRM INMOBILIARIO</small></span>
   </a>
   <div class="top-actions">
     <span id="accountEmail" class="local-badge" hidden></span>
@@ -53,6 +53,7 @@
     </div>
   </section>
 
+  <section class="reminders-panel" id="remindersPanel" hidden><div class="section-head"><div><p class="eyebrow">AGENDA ACTIVA</p><h2>Recordatorios y publicaciones</h2></div><button id="enableNotifications" class="button button-outline" type="button">Activar avisos</button></div><p id="notificationHelp" class="reminder-note">Los avisos de esta versión se muestran con el CRM abierto; las notificaciones con la aplicación cerrada requieren activar un servicio push.</p><div id="reminderList" class="reminder-list"></div></section>
   <section class="stats" aria-label="Resumen">
     <article class="stat-card"><span>Contactos activos</span><strong id="statActive">0</strong></article>
     <article class="stat-card"><span>Seguimientos pendientes</span><strong id="statPending">0</strong></article>
@@ -63,7 +64,8 @@
   <nav class="tabs main-tabs" aria-label="Secciones del CRM">
     <button class="tab active" data-view="properties" type="button">Propiedades</button>
     <button class="tab" data-view="buyers" type="button">Compradores</button>
-    <button class="tab" data-view="sellers" type="button">Vendedores</button>
+    <button class="tab" data-view="sellers" type="button">Propietarios</button>
+    <button class="tab" data-view="renters" type="button">Buscan renta</button>
     <button class="tab" data-view="investors" type="button">Inversionistas</button>
     <button class="tab" data-view="calendar" type="button">Calendario</button>
   </nav>
@@ -112,7 +114,7 @@
     <div class="agenda-card"><div class="agenda-head"><div><p class="eyebrow">DÍA SELECCIONADO</p><h3 id="selectedDateLabel"></h3></div><button id="whatsReminderBtn" class="button button-whatsapp" type="button">Abrir recordatorio en WhatsApp</button></div><p class="reminder-note">WhatsApp abre el texto listo para enviar; por ahora hay que pulsar Enviar. Para que llegue automáticamente se requiere una integración de WhatsApp Business.</p><div id="dayAgenda" class="day-agenda"></div></div>
   </section>
 
-  <footer class="app-footer"><span>Torrez &amp; Maldonado · Bienes raíces</span><span id="saveStatus">Tus datos permanecen en este navegador.</span></footer>
+  <footer class="app-footer"><span>Torres Maldonado · Bienes raíces</span><span id="saveStatus">Tus datos permanecen en este navegador.</span></footer>
 </main>
 
 <dialog id="leadDialog" class="dialog">
@@ -125,9 +127,9 @@
       <label>Email<input id="email" name="email" type="email" autocomplete="email" placeholder="nombre@correo.com"></label>
       <label>Perfil del cliente<select id="clientType" required><option value="">Selecciona</option><option>Comprador</option><option>Propietario vendedor</option><option>Busca renta</option><option>Ofrece renta</option><option>Aportante o inversionista</option></select></label>
       <label>Tipo de operación<select id="operation" required><option value="">Selecciona</option><option>Compra</option><option>Venta</option><option>Renta</option><option>Aportación</option></select></label>
-      <label>Presupuesto / monto de crédito (MXN)<input id="budget" type="text" inputmode="decimal" placeholder="$2,500,000" autocomplete="off"></label>
-      <label>Tipo de crédito o pago<select id="creditType"><option value="">No definido</option><option>Infonavit</option><option>Infonavit Total</option><option>Cofinavit</option><option>Unamos Créditos</option><option>FOVISSSTE</option><option>Bancario</option><option>Recursos propios</option><option>Otro</option></select></label>
-      <label>Busca<select id="propertyType"><option value="">Por definir</option><option>Casa</option><option>Departamento</option><option>Terreno</option><option>Hectárea</option></select></label>
+      <label id="budgetLabel">Presupuesto / monto de crédito (MXN)<input id="budget" type="text" inputmode="decimal" placeholder="$2,500,000" autocomplete="off"></label>
+      <label id="creditTypeLabel">Tipo de crédito o pago<select id="creditType"><option value="">No definido</option><option>Infonavit</option><option>Infonavit Total</option><option>Cofinavit</option><option>Unamos Créditos</option><option>FOVISSSTE</option><option>Bancario</option><option>Recursos propios</option><option>Otro</option></select></label>
+      <label id="propertyTypeLabel">Tipo de inmueble<select id="propertyType"><option value="">Por definir</option><option>Casa</option><option>Departamento</option><option>Terreno</option><option>Hectárea</option></select></label>
       <label>Tipo de zona<select id="zoneType"><option value="">Por definir</option><option>Ciudad</option><option>Playa</option><option>Montaña</option><option>Comunidad</option></select></label>
       <label>Zona / ciudad<input id="zone" placeholder="Ej. Tepic, Vallarta, Nuevo Nayarit"></label>
       <label>Origen del contacto<select id="source"><option value="Captura manual">Captura manual</option><option>Libreta</option><option>WhatsApp</option><option>Messenger</option><option>Marketplace</option><option>Referido</option><option>Otro</option></select></label>
@@ -136,8 +138,8 @@
       <label>Próxima llamada o mensaje<input id="nextContact" type="datetime-local"></label>
       <label>Canal del próximo contacto<select id="nextChannel"><option>Llamada</option><option>WhatsApp</option><option>Messenger</option><option>Otro</option></select></label>
       <label>Fecha prevista de cierre / entrega<input id="targetDate" type="date"></label>
-      <label>Inicio de renta<input id="rentStart" type="date"></label>
-      <label>Fin de renta<input id="rentEnd" type="date"></label>
+      <label id="rentStartLabel">Inicio de renta<input id="rentStart" type="date"></label>
+      <label id="rentEndLabel">Fin de renta<input id="rentEnd" type="date"></label>
       <label class="span-2">Comentarios<textarea id="comments" rows="3" placeholder="Necesidades, detalles y acuerdos importantes"></textarea></label>
       <section id="activityBox" class="activity-box span-2" hidden><strong>Historial de seguimiento</strong><div id="activityHistory"></div></section>
       <label class="span-2 check-row"><input id="waOptIn" type="checkbox"><span>El contacto autorizó recibir mensajes por WhatsApp</span></label>
@@ -156,7 +158,7 @@
       <label>Operación<select id="propertyOperation" required><option>Venta</option><option>Renta</option></select></label>
       <label>Tipo de inmueble<select id="propertyKind" required><option>Departamento</option><option>Casa</option><option>Terreno</option><option>Hectárea</option></select></label>
       <label>Precio en pesos (MXN)<input id="propertyPrice" type="text" inputmode="decimal" required placeholder="$2,500,000" autocomplete="off"></label>
-      <label>Superficie<input id="propertySurface" type="number" min="0" step="0.01" placeholder="Ej. 180"></label>
+      <label>Superficie<input id="propertySurface" type="text" inputmode="decimal" placeholder="Ej. 1,250.50" autocomplete="off"></label>
       <label>Unidad<select id="propertySurfaceUnit"><option>m²</option><option>ha</option></select></label>
       <label>Ciudad / zona<input id="propertyZone" required placeholder="Ej. Tepic, Nuevo Nayarit"></label>
       <label class="span-2">Domicilio o ubicación<input id="propertyAddress" placeholder="Colonia, calle o referencias"></label>
@@ -164,6 +166,7 @@
       <label>Etapa<select id="propertyStatus"><option>Revisión</option><option>Aceptación y firma</option><option>Promoción</option><option>Entrega</option></select></label>
       <label class="span-2 check-row"><input id="propertyTitleReviewed" type="checkbox"><span>Titularidad y documentos base revisados</span></label>
       <label class="span-2 check-row"><input id="propertyAgreementSigned" type="checkbox"><span>Convenio de promoción y comisión firmado</span></label>
+      <div class="span-2" id="publicationReminderControls" hidden><p id="lastPublishedLabel" class="reminder-note"></p><button id="markPublishedBtn" class="button button-outline" type="button">✓ Marcar como publicada hoy</button></div>
       <div class="span-2"><button id="openPublicationCenter" class="button button-outline" type="button" hidden>✦ Centro de publicaciones</button></div>
        <label class="span-2">Foto principal<input id="propertyPhoto" type="file" accept="image/*" capture="environment"></label>
       <div id="propertyPhotoPreview" class="property-photo-preview span-2" hidden></div>
