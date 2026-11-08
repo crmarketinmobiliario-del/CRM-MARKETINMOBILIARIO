@@ -550,6 +550,13 @@
     if (!id) return;
     const dates = publicationDates(); dates[id] = new Date().toISOString();
     localStorage.setItem(PUBLICATION_KEY, JSON.stringify(dates));
+    if (currentUser && supabaseClient) {
+      void supabaseClient.from("crm_publication_log").upsert({
+        owner_id:currentUser.id, property_id:id, published_at:dates[id]
+      }, {onConflict:"property_id"}).then(({error}) => {
+        if (error) setStatus("Publicación guardada localmente; no se pudo sincronizar la fecha: " + error.message);
+      });
+    }
     renderReminders();
   }
   function publicationDue(property) {
@@ -593,11 +600,47 @@
     $("lastPublishedLabel").textContent = "Publicada hoy. Próxima revisión en 3 días (en este dispositivo).";
     setStatus("Publicación registrada en este dispositivo.");
   });
-  $("enableNotifications").addEventListener("click", async () => {
-    if (!("Notification" in window)) { $("notificationHelp").textContent = "Este navegador no admite notificaciones."; return; }
+  function vapidBytes(key) {
+    const pad = "=".repeat((4 - key.length % 4) % 4);
+    const decoded = atob((key + pad).replace(/-/g, "+").replace(/_/g, "/"));
+    return Uint8Array.from(decoded, char => char.charCodeAt(0));
+  }
+  async function enableDevicePush() {
+    if (!currentUser || !supabaseClient) throw new Error("Inicia sesión primero.");
+    if (!("Notification" in window) || !("PushManager" in window) || !("serviceWorker" in navigator)) {
+      throw new Error("Este navegador no admite Web Push. Prueba Chrome actualizado.");
+    }
+    if (!window.CRM_PUSH_PUBLIC_KEY) throw new Error("Falta configurar la clave pública Web Push.");
     const permission = await Notification.requestPermission();
-    $("notificationHelp").textContent = permission === "granted" ? "Avisos permitidos. En esta versión el CRM debe estar abierto para emitirlos; el envío push en segundo plano está pendiente." : "Notificaciones no autorizadas. Tus pendientes siguen visibles en la agenda.";
-    if (permission === "granted") new Notification("CRM Torres Maldonado", { body:"Avisos habilitados mientras el CRM esté abierto." });
+    if (permission !== "granted") throw new Error("Debes autorizar las notificaciones en este teléfono.");
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: vapidBytes(window.CRM_PUSH_PUBLIC_KEY)
+    });
+    const data = subscription.toJSON();
+    if (!data.keys?.p256dh || !data.keys?.auth) throw new Error("El teléfono no entregó las claves de suscripción.");
+    const { error } = await supabaseClient.from("crm_push_subscriptions").upsert({
+      owner_id: currentUser.id, endpoint: subscription.endpoint,
+      p256dh: data.keys.p256dh, auth: data.keys.auth,
+      device_label: /Huawei/i.test(navigator.userAgent) ? "Huawei" : /Samsung/i.test(navigator.userAgent) ? "Samsung" : "Dispositivo Web Push",
+      updated_at: new Date().toISOString()
+    }, {onConflict:"endpoint"});
+    if (error) throw error;
+    return registration;
+  }
+  $("enableNotifications").addEventListener("click", async () => {
+    const help = $("notificationHelp");
+    help.textContent = "Registrando este dispositivo…";
+    try {
+      const registration = await enableDevicePush();
+      await registration.showNotification("CRM Torres Maldonado", {
+        body: "Este dispositivo ya está registrado para recibir avisos.",
+        icon: "./icon-rm-192.png", tag: "crm-push-test", data: {url:"./crm.html"}
+      });
+      help.textContent = "Dispositivo registrado. Avisos programados: 9:00 y 11:00 a. m. (cuando el servicio de Supabase esté activado).";
+    } catch (error) { help.textContent = `No se activaron los avisos: ${error.message}`; }
   });
   let viewedPropertyId = "";
   async function showPropertyDetail(id) {

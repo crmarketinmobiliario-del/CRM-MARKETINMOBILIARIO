@@ -1,5 +1,5 @@
-const CACHE = "crm-capture-shell-v18";
-const SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./capture-bridge.js", "./manifest.webmanifest", "./crm.html", "./crm.css", "./crm.js", "./supabase-config.js", "./icon-rm-192.png", "./icon-rm-512.png"];
+const CACHE = "crm-capture-shell-v19";
+const SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./capture-bridge.js", "./manifest.webmanifest", "./crm.html", "./crm.css", "./crm.js", "./push-config.js", "./supabase-config.js", "./icon-rm-192.png", "./icon-rm-512.png"];
 self.addEventListener("install", event => {
     event.waitUntil((async () => {
         const cache = await caches.open(CACHE);
@@ -28,4 +28,26 @@ self.addEventListener("fetch", event => {
         }
         return response;
     }).catch(() => caches.match(event.request)));
+});
+
+self.addEventListener("push", event => {
+  let message = {title:"CRM Torres Maldonado", body:"Tienes actividades pendientes.", url:"./crm.html"};
+  try { if (event.data) message = {...message,...event.data.json()}; } catch (_) {}
+  event.waitUntil(self.registration.showNotification(message.title, {
+    body:message.body, icon:"./icon-rm-192.png", badge:"./icon-rm-192.png",
+    tag:message.tag || "crm-reminders", data:{url:message.url || "./crm.html"}
+  }));
+});
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const url = new URL(event.notification.data?.url || "./crm.html", self.registration.scope).href;
+    const windows = await self.clients.matchAll({type:"window",includeUncontrolled:true});
+    for (const client of windows) {
+      if (new URL(client.url).origin === new URL(url).origin) {
+        await client.navigate(url); return client.focus();
+      }
+    }
+    return self.clients.openWindow(url);
+  })());
 });
