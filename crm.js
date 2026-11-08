@@ -16,7 +16,7 @@
   let leads = [];
   let properties = [];
   let currentSection = "properties";
-  let propertyOperationFilter = "Venta";
+  let propertyOperationFilter = "";
   let propertyTypeFilter = "";
   let propertyPhotoDataUrl = "";
   let propertyPhotoCache = new Map();
@@ -353,7 +353,8 @@
     try { await syncPropertiesWithCloud(); }
     catch (error) {
       properties = (await getAllProperties()).filter(property => !property.ownerId || property.ownerId === currentUser.id);
-      setStatus(`Contactos sincronizados. No se pudieron cargar propiedades: ${error.message}`);
+      setStatus(`Contactos sincronizados, pero PROPIEDADES NO: ${error.message}. Revisa el registro pendiente en esta computadora.`);
+      return false;
     }
     return true;
   }
@@ -490,7 +491,7 @@
   }
   async function renderProperties() {
     const query = $("propertySearch").value.trim().toLowerCase();
-    const records = properties.filter(property => !property.archived && property.operation === propertyOperationFilter &&
+    const records = properties.filter(property => !property.archived && (!propertyOperationFilter || property.operation === propertyOperationFilter) &&
       (!propertyTypeFilter || property.propertyType === propertyTypeFilter) &&
       (!query || [property.title, property.zone, property.address, property.description, ownerName(property.ownerLeadId)].join(" ").toLowerCase().includes(query)))
       .sort((a,b) => (a.title || "").localeCompare(b.title || "", "es"));
@@ -645,7 +646,7 @@
     const owners = activeLeads().filter(lead => ["Propietario vendedor","Ofrece renta"].includes(lead.clientType));
     $("propertyForm").reset(); $("propertyId").value = ""; $("propertyFormError").textContent = "";
     $("propertyDialogTitle").textContent = "Nueva propiedad";
-    $("propertyOperation").value = propertyOperationFilter;
+    $("propertyOperation").value = propertyOperationFilter || "Venta";
     $("propertyStatus").value = "Revisión";
     $("propertyTitleReviewed").checked = false; $("propertyAgreementSigned").checked = false;
     $("propertyOwner").innerHTML = `<option value="">Selecciona propietario</option>` + owners.map(owner => `<option value="${esc(owner.id)}">${esc(owner.name)} · ${esc(owner.phone || "sin teléfono")}</option>`).join("");
