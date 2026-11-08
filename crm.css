@@ -126,3 +126,59 @@ body,.topbar{background:#000}.topbar{border-color:#383838}.lead-card,.property-c
     top: 0;
   }
 }
+
+
+/* ================================================================
+   TORRES MALDONADO · LUXURY RESPONSIVE · 08 NOV 2026
+   PC: tarjetas originales horizontales y compactas.
+   Móvil: fichas verticales de altura natural, sin huecos forzados.
+   ================================================================ */
+@media (min-width: 701px) {
+  #leadList, #propertyList, #reminderList {gap: 12px; padding-bottom: 0; isolation: auto;}
+  #leadList > .lead-card, #propertyList > .property-card, #reminderList > .reminder-item {
+    position: relative; top: auto; z-index: auto; min-height: 0; height: auto;
+    align-content: normal; align-items: center; scroll-margin-top: 0;
+    box-shadow: none; background: linear-gradient(120deg,#141414,#101010);
+  }
+  #propertyList > .property-card {grid-template-columns: 142px minmax(0,1fr) auto; gap: 18px; padding: 14px 16px;}
+  .property-card-photo {width:142px;height:110px;}
+  #leadList > .lead-card {grid-template-columns:minmax(190px,1.3fr) minmax(145px,1fr) minmax(145px,.9fr) minmax(150px,.9fr) auto;gap:16px;padding:16px 18px;}
+  #reminderList > .reminder-item {padding:14px 16px;}
+}
+/* El resumen de pendientes nunca invade el tablero. */
+.reminders-panel {margin:12px 0 20px;border-radius:10px;background:linear-gradient(120deg,#151515,#0b0b0b);}
+.reminders-summary {padding:14px 18px;}
+.reminders-summary h2 {font-size:1.12rem;}
+.reminders-summary p:not(.eyebrow) {margin-top:5px;}
+/* Diálogo de pendientes independiente de las fichas completas. */
+#remindersDialog.dialog {position:fixed;inset:auto;width:min(820px,calc(100% - 24px));height:auto;max-height:90dvh;margin:auto;border-radius:12px;overflow:auto;}
+#remindersDialog .reminders-dialog-inner {min-height:0;}
+#reminderList > .reminder-item {position:relative;top:auto;z-index:auto;min-height:0;height:auto;box-shadow:none;scroll-margin-top:0;}
+@media (max-width:700px) {
+  #leadList, #propertyList {gap:16px;padding-bottom:16px;isolation:isolate;}
+  #leadList > .lead-card, #propertyList > .property-card {
+    position:sticky;top:76px;min-height:0;height:auto;align-content:normal;
+    align-items:stretch;scroll-margin-top:76px;z-index:var(--stack-index,1);
+    border:1px solid #665332;border-radius:12px;overflow:hidden;
+    background:linear-gradient(145deg,#191919,#0c0c0c);
+    box-shadow:0 12px 25px #000b;
+  }
+  #propertyList > .property-card {display:flex;flex-direction:column;gap:0;padding:0;align-items:stretch;}
+  #propertyList .property-card-photo {width:100%;height:auto;aspect-ratio: 16/10;border:0;border-radius:0;background:#1b1b1b;}
+  #propertyList .property-card-photo img {width:100%;height:100%;object-fit:cover;}
+  #propertyList .property-card-body {padding:16px 17px 12px;gap:7px;}
+  #propertyList .property-card h3 {font-size:1.28rem;line-height:1.3;}
+  #propertyList .property-price {font-size:1.22rem;font-weight:700;letter-spacing:.01em;}
+  #propertyList .property-card-body small {font-size:.78rem;line-height:1.5;}
+  #propertyList .property-edit {align-self:stretch;width:auto;height:42px;margin:0 16px 16px;border-color:#a98a4c;color:#e1c28c;}
+  #leadList > .lead-card {display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:18px 17px;}
+  #leadList .lead-main {width:100%;padding-bottom:10px;border-bottom:1px solid #403625;}
+  #leadList .lead-main h3 {font-size:1.3rem;line-height:1.3;}
+  #leadList .lead-actions {width:100%;justify-content:flex-start;padding-top:8px;border-top:1px solid #403625;}
+  #remindersDialog.dialog {width:calc(100% - 16px);max-height:92dvh;}
+  #reminderList > .reminder-item {display:flex;flex-direction:column;align-items:stretch;gap:14px;padding:16px;}
+  #reminderList .button {width:100%;white-space:normal;}
+  .reminders-summary {gap:10px;align-items:center;flex-wrap:wrap;}
+  .reminders-summary .button {min-width:145px;}
+}
+@media (prefers-reduced-motion:reduce) {#leadList > .lead-card,#propertyList > .property-card {transition:none;}}
