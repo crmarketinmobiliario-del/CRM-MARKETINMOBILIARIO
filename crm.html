@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#080808">
+<meta name="description" content="CRM inmobiliario de Torrez & Maldonado">
+<title>CRM | Torrez & Maldonado</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-rm-192.png">
+<link rel="stylesheet" href="crm.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="crm.html" aria-label="CRM Torrez y Maldonado">
+    <span class="brand-mark" aria-hidden="true">RM</span>
+    <span class="brand-copy"><strong>TORRES MALDONADO</strong><small>CRM INMOBILIARIO</small></span>
+  </a>
+  <div class="top-actions">
+    <span id="accountEmail" class="local-badge" hidden></span>
+    <span id="syncBadge" class="local-badge"><i></i> CRM protegido</span>
+    <button id="logoutBtn" class="button button-quiet" type="button" hidden>Cerrar sesión</button>
+    <button id="installBtn" class="button button-outline install-button" type="button">Instalar app</button>
+
+  </div>
+</header>
+<section id="authGate" class="auth-gate" aria-labelledby="authTitle">
+  <div class="auth-card">
+    <span class="brand-mark auth-mark" aria-hidden="true">RM</span>
+    <p class="eyebrow">ACCESO PRIVADO</p>
+    <h1 id="authTitle">Tu CRM, en todos tus dispositivos.</h1>
+    <p class="auth-copy">Inicia sesión para sincronizar tus contactos. Si es tu primera vez, crea tu acceso con el correo del CRM.</p>
+    <form id="authForm">
+      <label>Correo<input id="authEmail" type="email" autocomplete="username" value="CRMARKETINMOBILIARIO@GMAIL.COM" required></label>
+      <label>Contraseña<input id="authPassword" type="password" autocomplete="current-password" minlength="8" required></label>
+      <button id="authSubmit" class="button button-gold auth-submit" type="submit">Iniciar sesión</button>
+    </form>
+    <button id="authModeToggle" class="auth-toggle" type="button">Primera vez: crear mi acceso</button>
+    <p id="authStatus" class="auth-status" role="status" aria-live="polite"></p>
+  </div>
+</section>
+<main id="crmApp" class="layout" hidden>
+  <aside class="badigi-pc" aria-label="BaDigi, asistente inmobiliario"><img src="badigi-inmobiliario.webp" alt="BaDigi con carpeta de documentos Torrez y Maldonado" loading="lazy"></aside>
+  <section class="intro">
+    <div>
+      <p class="eyebrow">RELACIONES · SEGUIMIENTO · OPERACIONES</p>
+      <h1>Que ningún contacto se quede atrás.</h1>
+      <p class="intro-copy">Organiza compradores, propietarios, rentas y aportantes en un solo lugar.</p>
+    </div>
+    <div class="intro-actions">
+
+      <button id="newBtn" class="button button-gold" type="button" hidden>+ Nuevo cliente</button>
+      <button id="newPropertyBtn" class="button button-gold" type="button" hidden>+ Nueva propiedad</button>
+    </div>
+  </section>
+
+  <section class="reader-panel" aria-label="Herramientas de captura">
+    <div class="reader-panel-copy"><p class="eyebrow">HERRAMIENTAS DEL CRM</p><h2>Lector y captura de contactos</h2><p>Abre el lector únicamente cuando lo necesites.</p></div>
+    <div class="reader-panel-actions"><a class="button button-outline" href="index.html">Abrir lector</a><button id="captureBtn" class="button button-gold" type="button">Capturar lead</button></div>
+    <p id="readerPendingNotice" class="reader-pending-notice" hidden>Hay una captura del lector lista para revisar. Pulsa «Capturar lead».</p>
+  </section>
+
+  <section class="reminders-panel" id="remindersPanel" hidden>
+    <div class="reminders-summary">
+      <div class="reminders-summary-copy"><p class="eyebrow">AGENDA PERSONAL</p><h2>Pendientes para hoy <span id="reminderCount" class="reminder-count">0</span></h2><p id="reminderDateText">Actividades que requieren atención.</p></div>
+      <button id="openRemindersBtn" class="button button-outline" type="button">Ver pendientes</button>
+    </div>
+  </section>
+  <dialog id="remindersDialog" class="dialog reminders-dialog" aria-labelledby="remindersDialogTitle">
+    <div class="reminders-dialog-inner">
+      <div class="dialog-head"><div><p class="eyebrow">AGENDA DE TRABAJO</p><h2 id="remindersDialogTitle">Mis pendientes</h2><p id="reminderHelp" class="reminder-note">Selecciona una actividad para abrir su ficha.</p></div><button id="closeRemindersBtn" class="button button-quiet" type="button">Cerrar</button></div>
+      <div id="reminderList" class="reminder-list"></div>
+      <p id="notificationHelp" class="reminder-note">Los avisos en segundo plano requieren configurar notificaciones push.</p>
+      <button id="enableNotifications" class="button button-outline" type="button">Permitir avisos en este dispositivo</button>
+    </div>
+  </dialog>
+  <dialog id="propertyDetailDialog" class="dialog property-detail-dialog" aria-labelledby="propertyDetailTitle">
+    <div class="property-detail-inner">
+      <div class="dialog-head"><div><p class="eyebrow">FICHA INMOBILIARIA</p><h2 id="propertyDetailTitle">Propiedad</h2></div><button id="closePropertyDetail" class="icon-button" type="button" aria-label="Cerrar">×</button></div>
+      <div id="propertyDetailContent"></div>
+      <div class="property-detail-actions">
+        <button id="detailEditProperty" class="button button-outline" type="button">Editar ficha</button>
+        <button id="detailPublishProperty" class="button button-gold" type="button">Publicar propiedad</button>
+        <button id="detailDeleteProperty" class="button button-danger" type="button">Eliminar propiedad</button>
+      </div>
+      <p id="propertyDetailError" class="form-error" role="alert"></p>
+    </div>
+  </dialog>
+  <section class="stats" aria-label="Resumen">
+    <article class="stat-card"><span>Contactos activos</span><strong id="statActive">0</strong></article>
+    <article class="stat-card"><span>Seguimientos pendientes</span><strong id="statPending">0</strong></article>
+    <article class="stat-card"><span>Para hoy</span><strong id="statToday">0</strong></article>
+    <article class="stat-card"><span>Entregas próximas</span><strong id="statDelivery">0</strong></article>
+  </section>
+
+  <nav class="tabs main-tabs" aria-label="Secciones del CRM">
+    <button class="tab active" data-view="properties" type="button">Propiedades</button>
+    <button class="tab" data-view="buyers" type="button">Compradores</button>
+    <button class="tab" data-view="sellers" type="button">Propietarios</button>
+    <button class="tab" data-view="renters" type="button">Buscan renta</button>
+    <button class="tab" data-view="investors" type="button">Inversionistas</button>
+    <button class="tab" data-view="calendar" type="button">Calendario</button>
+  </nav>
+
+  <section id="leadsView" class="view" hidden>
+    <div class="section-head">
+      <div><p id="directoryEyebrow" class="eyebrow">DIRECTORIO DE COMPRADORES</p><h2 id="directoryTitle">Compradores</h2></div>
+      <div class="view-tools">
+        <button id="newClientInSectionBtn" class="button button-gold" type="button" hidden>+ Agregar comprador</button>
+        <button id="exportBtn" class="button button-quiet" type="button">Respaldar datos</button>
+        <label class="button button-quiet import-label" for="importFile">Importar respaldo</label>
+        <input id="importFile" type="file" accept="application/json,.json" hidden>
+      </div>
+    </div>
+    <div class="filters">
+      <label class="search-wrap"><span class="sr-only">Buscar</span><input id="searchInput" type="search" placeholder="Buscar nombre, teléfono, email o zona"></label>
+      <select id="operationFilter" aria-label="Filtrar por operación"><option value="">Todas las operaciones</option><option>Compra</option><option>Venta</option><option>Renta</option><option>Aportación</option></select>
+      <select id="stageFilter" aria-label="Filtrar por etapa"><option value="">Todas las etapas</option></select>
+    </div>
+    <div id="leadList" class="lead-list"></div>
+    <div id="emptyState" class="empty-state" hidden>
+      <span class="empty-mark">RM</span><h3>Tu lista empieza aquí</h3>
+      <p>Agrega un contacto o lee una captura de Messenger, WhatsApp o una foto de tu libreta.</p>
+      <button class="button button-gold" id="emptyNewBtn" type="button">Agregar primer contacto</button>
+    </div>
+  </section>
+
+  <section id="propertiesView" class="view active">
+    <div class="section-head"><div><p class="eyebrow">INVENTARIO INMOBILIARIO</p><h2>Propiedades</h2></div><button id="propertyAddBtn" class="button button-gold" type="button">+ Nueva propiedad</button></div>
+    <div class="property-operation-tabs" aria-label="Filtrar propiedades por operación"><button class="property-op active" data-property-operation="" type="button">Todas</button><button class="property-op" data-property-operation="Venta" type="button">Venta</button><button class="property-op" data-property-operation="Renta" type="button">Renta</button><button class="property-op" data-property-operation="Aportación" type="button">Aportación</button></div>
+    <div class="property-type-tabs" aria-label="Filtrar por tipo de propiedad"><button class="property-type active" data-property-type="" type="button">Todas</button><button class="property-type" data-property-type="Departamento" type="button">Departamentos</button><button class="property-type" data-property-type="Casa" type="button">Casas</button><button class="property-type" data-property-type="Terreno" type="button">Terrenos</button><button class="property-type" data-property-type="Hectárea" type="button">Hectáreas</button><button class="property-type" data-property-type="Local comercial" type="button">Locales</button></div>
+    <div class="property-search"><input id="propertySearch" type="search" placeholder="Buscar por nombre, zona o propietario" aria-label="Buscar propiedades"></div>
+    <div id="propertyList" class="property-list"></div>
+    <div id="emptyPropertyState" class="empty-state"><span class="empty-mark">RM</span><h3>Aún no hay propiedades en este grupo</h3><p>Agrega el inmueble para que aparezca aquí con su foto y ficha completa.</p><button class="button button-gold" id="emptyPropertyAddBtn" type="button">Agregar propiedad</button></div>
+  </section>
+
+  <section id="calendarView" class="view" hidden>
+    <div class="section-head calendar-title">
+      <div><p class="eyebrow">AGENDA</p><h2>Seguimientos y entregas</h2></div>
+      <div class="calendar-tools"><button id="prevMonth" class="icon-button" type="button" aria-label="Mes anterior">‹</button><strong id="monthLabel"></strong><button id="nextMonth" class="icon-button" type="button" aria-label="Mes siguiente">›</button><button id="todayBtn" class="button button-quiet" type="button">Hoy</button></div>
+    </div>
+    <div class="calendar-card">
+      <div class="calendar-grid calendar-weekdays"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div>
+      <div id="calendarGrid" class="calendar-grid" role="grid" aria-label="Calendario mensual"></div>
+    </div>
+    <div class="agenda-card"><div class="agenda-head"><div><p class="eyebrow">DÍA SELECCIONADO</p><h3 id="selectedDateLabel"></h3></div><button id="whatsReminderBtn" class="button button-whatsapp" type="button">Abrir recordatorio en WhatsApp</button></div><p class="reminder-note">WhatsApp abre el texto listo para enviar; por ahora hay que pulsar Enviar. Para que llegue automáticamente se requiere una integración de WhatsApp Business.</p><div id="dayAgenda" class="day-agenda"></div></div>
+  </section>
+
+  <footer class="app-footer"><span>Torres Maldonado · Bienes raíces</span><span id="saveStatus">Tus datos permanecen en este navegador.</span></footer>
+</main>
+
+<dialog id="mobileLeadDetail" class="dialog mobile-lead-detail" aria-labelledby="mobileLeadName">
+  <div class="mobile-lead-inner">
+    <div class="dialog-head"><div><p class="eyebrow">FICHA DE CONTACTO</p><h2 id="mobileLeadName"></h2><small id="mobileLeadType"></small></div><button id="mobileLeadClose" class="icon-button close-button" type="button" aria-label="Cerrar ficha">×</button></div>
+    <div id="mobileLeadFields" class="mobile-lead-fields"></div>
+    <div class="mobile-lead-notes"><strong>Observaciones</strong><p id="mobileLeadNotes"></p></div>
+    <div class="mobile-lead-buttons">
+      <a id="mobileLeadWhats" class="button button-outline" target="_blank" rel="noopener">WhatsApp</a>
+      <a id="mobileLeadCall" class="button button-outline">Llamar</a>
+      <button id="mobileLeadReminder" class="button button-outline" type="button">Recordatorio</button>
+      <button id="mobileLeadEdit" class="button button-gold" type="button">Editar</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="leadDialog" class="dialog">
+  <form id="leadForm" method="dialog">
+    <div class="dialog-head"><div><p class="eyebrow">FICHA DE CONTACTO</p><h2 id="dialogTitle">Nuevo contacto</h2></div><button class="icon-button close-button" type="button" data-close="leadDialog" aria-label="Cerrar">×</button></div>
+    <input id="leadId" type="hidden">
+    <div class="form-grid">
+      <label class="span-2">Nombre<input id="name" name="name" required autocomplete="name" placeholder="Nombre y apellidos"></label>
+      <label>Contacto / WhatsApp<input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="+52 322…"></label>
+      <label>Email<input id="email" name="email" type="email" autocomplete="email" placeholder="nombre@correo.com"></label>
+      <label>Perfil del cliente<select id="clientType" required><option value="">Selecciona</option><option>Comprador</option><option>Propietario vendedor</option><option>Busca renta</option><option>Ofrece renta</option><option>Aportante o inversionista</option></select></label>
+      <label>Tipo de operación<select id="operation" required><option value="">Selecciona</option><option>Compra</option><option>Venta</option><option>Renta</option><option>Aportación</option></select></label>
+      <label id="budgetLabel">Presupuesto / monto de crédito (MXN)<input id="budget" type="text" inputmode="decimal" placeholder="$2,500,000" autocomplete="off"></label>
+      <label id="creditTypeLabel">Tipo de crédito o pago<select id="creditType"><option value="">No definido</option><option>Infonavit</option><option>Infonavit Total</option><option>Cofinavit</option><option>Unamos Créditos</option><option>FOVISSSTE</option><option>Bancario</option><option>Recursos propios</option><option>Otro</option></select></label>
+      <label id="propertyTypeLabel">Tipo de inmueble<select id="propertyType"><option value="">Por definir</option><option>Casa</option><option>Departamento</option><option>Terreno</option><option>Hectárea</option><option>Local comercial</option></select></label>
+      <label>Tipo de zona<select id="zoneType"><option value="">Por definir</option><option>Ciudad</option><option>Playa</option><option>Montaña</option><option>Comunidad</option></select></label>
+      <label>Zona / ciudad<input id="zone" placeholder="Ej. Tepic, Vallarta, Nuevo Nayarit"></label>
+      <label>Origen del contacto<select id="source"><option value="Captura manual">Captura manual</option><option>Libreta</option><option>WhatsApp</option><option>Messenger</option><option>Marketplace</option><option>Referido</option><option>Otro</option></select></label>
+      <label>Etapa<select id="stage" required></select></label>
+      <label>Inicio de atención<input id="startDate" type="date"></label>
+      <label>Próxima llamada o mensaje<input id="nextContact" type="datetime-local"></label>
+      <label>Canal del próximo contacto<select id="nextChannel"><option>Llamada</option><option>WhatsApp</option><option>Messenger</option><option>Otro</option></select></label>
+      <label>Fecha prevista de cierre / entrega<input id="targetDate" type="date"></label>
+      <label id="rentStartLabel">Inicio de renta<input id="rentStart" type="date"></label>
+      <label id="rentEndLabel">Fin de renta<input id="rentEnd" type="date"></label>
+      <label class="span-2">Comentarios<textarea id="comments" rows="3" placeholder="Necesidades, detalles y acuerdos importantes"></textarea></label>
+      <section id="activityBox" class="activity-box span-2" hidden><strong>Historial de seguimiento</strong><div id="activityHistory"></div></section>
+      <label class="span-2 check-row"><input id="waOptIn" type="checkbox"><span>El contacto autorizó recibir mensajes por WhatsApp</span></label>
+    </div>
+    <div id="formError" class="form-error" role="alert"></div>
+    <div class="dialog-actions"><button id="deleteLeadBtn" class="button button-danger" type="button" hidden>Eliminar contacto</button><span class="dialog-actions-spacer"></span><button class="button button-quiet" type="button" data-close="leadDialog">Cancelar</button><button class="button button-gold" type="submit">Guardar contacto</button></div>
+  </form>
+</dialog>
+
+<dialog id="propertyDialog" class="dialog property-dialog">
+  <form id="propertyForm">
+    <div class="dialog-head"><div><p class="eyebrow">FICHA DE PROPIEDAD</p><h2 id="propertyDialogTitle">Nueva propiedad</h2></div><button class="icon-button close-button" type="button" data-close="propertyDialog" aria-label="Cerrar">×</button></div>
+    <input id="propertyId" type="hidden">
+    <div class="form-grid">
+      <label class="span-2">Nombre o título<input id="propertyTitle" required placeholder="Ej. Casa con alberca en Nuevo Nayarit"></label>
+      <label>Operación<select id="propertyOperation" required><option>Venta</option><option>Renta</option></select></label>
+      <label>Tipo de inmueble<select id="propertyKind" required><option>Departamento</option><option>Casa</option><option>Terreno</option><option>Hectárea</option><option>Local comercial</option></select></label>
+      <label>Precio en pesos (MXN)<input id="propertyPrice" type="text" inputmode="decimal" required placeholder="$2,500,000" autocomplete="off"></label>
+      <label>Superficie<input id="propertySurface" type="text" inputmode="decimal" placeholder="Ej. 1,250.50" autocomplete="off"></label>
+      <label>Unidad<select id="propertySurfaceUnit"><option>m²</option><option>ha</option></select></label>
+      <label>Ciudad / zona<input id="propertyZone" required placeholder="Ej. Tepic, Nuevo Nayarit"></label>
+      <label class="span-2">Domicilio o ubicación<input id="propertyAddress" placeholder="Colonia, calle o referencias"></label>
+      <label>Propietario (opcional)<select id="propertyOwner"><option value="">Sin asignar por ahora</option></select></label>
+      <label>Etapa<select id="propertyStatus"><option>Revisión</option><option>Aceptación y firma</option><option>Promoción</option><option>Entrega</option></select></label>
+      <label class="span-2 check-row"><input id="propertyTitleReviewed" type="checkbox"><span>Titularidad y documentos base revisados</span></label>
+      <label class="span-2 check-row"><input id="propertyAgreementSigned" type="checkbox"><span>Convenio de promoción y comisión firmado</span></label>
+      <div class="span-2" id="publicationReminderControls" hidden><p id="lastPublishedLabel" class="reminder-note"></p><button id="markPublishedBtn" class="button button-outline" type="button">✓ Marcar como publicada hoy</button></div>
+      <div class="span-2"><button id="openPublicationCenter" class="button button-outline" type="button" hidden>✦ Centro de publicaciones</button></div>
+       <label class="span-2">Foto principal<input id="propertyPhoto" type="file" accept="image/*"></label>
+      <div id="propertyPhotoPreview" class="property-photo-preview span-2" hidden></div>
+      <label>WhatsApp comercial<input id="propertyPublicPhone" type="tel" placeholder="322 123 4567"></label><label>Correo comercial<input id="propertyPublicEmail" type="email" placeholder="contacto@ejemplo.com"></label><label class="span-2">Descripción y observaciones<textarea id="propertyDescription" rows="4" placeholder="Características y detalles del inmueble"></textarea></label>
+      <p id="propertyFormError" class="form-error span-2" role="alert"></p>
+    </div>
+    <div class="dialog-actions"><button id="deletePropertyBtn" class="button button-danger" type="button" hidden>Eliminar propiedad</button><span class="dialog-actions-spacer"></span><button class="button button-quiet" type="button" data-close="propertyDialog">Cancelar</button><button class="button button-gold" type="submit">Guardar propiedad</button></div>
+  </form>
+</dialog>
+
+<dialog id="captureDialog" class="dialog capture-dialog">
+  <div class="dialog-head"><div><p class="eyebrow">CAPTURA ASISTIDA</p><h2>Leer una captura o foto</h2></div><button class="icon-button close-button" type="button" data-close="captureDialog" aria-label="Cerrar">×</button></div>
+  <p class="capture-note">El reconocimiento se procesa en este navegador. Revisa y corrige los datos antes de guardar el contacto.</p>
+  <div class="capture-controls"><label class="button button-gold file-button" for="captureFile">Elegir imagen o tomar foto</label><input id="captureFile" type="file" accept="image/*" capture="environment" hidden><button id="readImageBtn" class="button button-outline" type="button" disabled>Leer texto</button><button id="clearCaptureSelection" class="button button-quiet" type="button" disabled>Limpiar selección</button><button id="rotateCapture" class="button button-quiet" type="button" disabled>Girar 90°</button><button id="openCaptureFullscreen" class="button button-quiet" type="button" disabled>Abrir foto grande</button><button id="toggleCapturePan" class="button button-quiet" type="button" disabled>Mover foto</button></div>
+  <div class="capture-zoom-tools" aria-label="Controles de zoom"><button id="zoomOutCapture" class="button button-quiet" type="button" disabled>−</button><span id="captureZoomLabel">Ajustar</span><button id="zoomInCapture" class="button button-quiet" type="button" disabled>+</button><button id="resetZoomCapture" class="button button-quiet" type="button" disabled>Ajustar a pantalla</button></div>
+  <p class="capture-hint">Gira la foto si hace falta. Acércala y arrastra una sola vez sobre el texto que quieras leer. Puedes mover la foto desplazándola; “Leer texto” procesa la zona seleccionada o toda la imagen.</p>
+  <div id="capturePreviewWrap" class="capture-preview-wrap" hidden><canvas id="captureCanvas" aria-label="Vista completa de la captura o fotografía"></canvas><canvas id="captureSelectionCanvas" aria-label="Área para seleccionar texto"></canvas></div>
+  <p id="ocrStatus" class="status-line" role="status">Puedes elegir una captura de Messenger, WhatsApp o una foto de libreta.</p>
+  <label class="raw-label" for="ocrText">Texto reconocido, editable<textarea id="ocrText" rows="5" placeholder="El texto leído aparecerá aquí. También puedes pegar una conversación manualmente."></textarea></label>
+  <div class="capture-controls capture-data-controls"><label>Origen<select id="captureSource"><option>Libreta</option><option>WhatsApp</option><option>Messenger</option><option>Marketplace</option></select></label><button id="useCaptureBtn" class="button button-gold" type="button">Usar texto para nuevo contacto</button></div>
+  <p class="capture-footnote">No se guarda la imagen. Solo se guardan los campos del contacto cuando confirmes la ficha.</p>
+</dialog>
+
+
+<!-- Centro de Publicaciones: módulo independiente; no modifica la ficha ni el CRM -->
+<dialog id="publicationDialog" class="dialog publication-dialog">
+  <div class="publication-inner">
+    <div class="dialog-head"><div><p class="eyebrow">CENTRO DE PUBLICACIONES · TORRES MALDONADO</p><h2 id="pubHeading">Publicar propiedad</h2></div><button class="icon-button" id="pubClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="publication-grid">
+      <div class="publication-fields">
+        <label>Red social<select id="pubNetwork"><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="whatsapp">WhatsApp</option><option value="tiktok">TikTok</option></select></label>
+        <label>Formato<select id="pubFormat"></select></label>
+        <label>Encuadre<select id="pubFit"><option value="contain">Fit · imagen completa</option><option value="cover">Llenar · permite recorte</option></select></label>
+        <label>Código de propiedad<input id="pubCode" placeholder="RM-001" maxlength="24"></label>
+        <label>Título<input id="pubTitle" maxlength="150"></label>
+        <button id="pubGenerate" class="button button-gold" type="button">✦ Generar publicación automáticamente</button><label>Publicación generada (editable)<textarea id="pubCaption" rows="5" placeholder="Describe la propiedad para esta publicación"></textarea></label>
+        <label>WhatsApp de contacto<input id="pubPhone" type="tel" placeholder="322 123 4567"></label><label>Correo de contacto<input id="pubEmail" type="email" placeholder="contacto@ejemplo.com"></label><label>Llamado a la acción<input id="pubCta" value="Solicita información y agenda tu visita."></label>
+        <label>Hashtags<input id="pubTags" value="#CasaEnVenta #PuertoVallarta #MarketInmobiliario"></label>
+        <label>Enlace público de la ficha (opcional)<input id="pubUrl" type="url" placeholder="https://..." autocomplete="off"></label>
+        <label>Elegir foto para esta publicación<input id="pubImageFile" type="file" accept="image/*"></label>
+        <p class="publication-help">Se intenta cargar la foto principal de la ficha. También puedes elegir otra foto. La imagen original no se modifica.</p>
+      </div>
+      <div class="publication-preview">
+        <p id="pubDimensions" class="eyebrow">1080 × 1350 px</p>
+        <canvas id="pubCanvas" width="1080" height="1350" aria-label="Vista previa de publicación"></canvas>
+        <p id="pubStatus" role="status" aria-live="polite">Preparando publicación…</p>
+        <div class="publication-buttons">
+          <button id="pubSave" class="button button-quiet" type="button">Guardar borrador</button>
+          <button id="pubDownload" class="button button-outline" type="button">Descargar imagen</button>
+          <button id="pubCopy" class="button button-quiet" type="button">Copiar texto</button>
+          <button id="pubShare" class="button button-gold" type="button">Compartir</button>
+        </div>
+        <p class="publication-help">Compartir usa las opciones del dispositivo cuando están disponibles. No publica automáticamente en páginas empresariales.</p>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="supabase-config.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
+<script src="push-config.js" defer></script>
+<script src="crm.js" defer></script>
+<script src="publicaciones.js" defer></script>
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js").catch(() => {});</script>
+</body>
+</html>
