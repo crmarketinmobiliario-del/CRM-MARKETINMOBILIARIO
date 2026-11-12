@@ -194,3 +194,34 @@ body,.topbar{background:#000}.topbar{border-color:#383838}.lead-card,.property-c
 @media (min-width:621px) {
   #propertyList > .property-card, #leadList > .lead-card { position:relative !important; top:auto !important; }
 }
+
+/* CRM móvil: directorio compacto, fichas de consulta y botones parejos.
+   Sin alterar las reglas de escritorio. */
+.mobile-lead-detail{display:none}
+@media (max-width:620px){
+  #leadList{display:flex!important;flex-direction:column;gap:8px!important;isolation:isolate}
+  #leadList>.lead-card{display:flex!important;align-items:center!important;position:sticky!important;top:76px!important;min-height:66px!important;height:auto!important;padding:12px 14px!important;border-radius:9px!important;gap:8px!important;box-shadow:0 5px 14px #000b!important;cursor:pointer}
+  #leadList>.lead-card>.lead-main{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px;grid-column:auto!important}
+  #leadList>.lead-card>.lead-main h3{font-size:1rem;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #leadList>.lead-card>.lead-main>div:nth-child(2){display:none}
+  #leadList>.lead-card>.lead-main .lead-meta{font-size:.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #leadList>.lead-card>div:not(.lead-main){display:none!important}
+  #leadList>.lead-card::after{content:'›';color:var(--gold);font-size:1.7rem;line-height:1}
+  .mobile-lead-detail[open]{display:block;width:calc(100% - 18px);max-width:540px;max-height:94dvh;overflow:auto;border-radius:12px}
+  .mobile-lead-inner{padding:18px 15px}
+  .mobile-lead-fields{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:18px 0}
+  .mobile-lead-fields>div{display:flex;flex-direction:column;gap:4px;border-top:1px solid #55472f;padding-top:9px;min-width:0}
+  .mobile-lead-fields small{color:#b8ac96;font-size:.73rem}
+  .mobile-lead-fields strong{overflow-wrap:anywhere;font-size:.87rem;font-weight:500}
+  .mobile-lead-notes{border:1px solid #625133;background:#15120c;border-radius:9px;padding:13px;margin:15px 0}
+  .mobile-lead-notes strong{color:var(--gold)}
+  .mobile-lead-notes p{white-space:pre-wrap;line-height:1.55;margin:8px 0 0}
+  .mobile-lead-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .mobile-lead-buttons .button{display:flex;justify-content:center;align-items:center;width:100%;min-height:46px;padding:9px 6px;text-align:center}
+  .mobile-lead-buttons [hidden]{display:none!important}
+}
+
+/* BaDigi es la única adición visual al escritorio. */
+.badigi-pc{position:fixed;right:8px;bottom:8px;width:92px;z-index:5;pointer-events:none;opacity:.92}
+.badigi-pc img{display:block;width:100%;height:auto;border-radius:10px}
+@media(max-width:620px){.badigi-pc{display:none!important}}

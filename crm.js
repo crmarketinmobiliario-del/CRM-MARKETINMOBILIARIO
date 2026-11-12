@@ -509,7 +509,7 @@
     applyStackOrder();
     $("statActive").textContent = activeLeads().length;
     list.querySelectorAll("[data-edit]").forEach(button => button.addEventListener("click", event => { event.stopPropagation(); editLead(button.dataset.edit); }));
-    list.querySelectorAll("[data-open]").forEach(card => card.addEventListener("click", event => { if (event.target.closest("button,a,select")) return; editLead(card.dataset.open); }));
+    list.querySelectorAll("[data-open]").forEach(card => card.addEventListener("click", event => { if (event.target.closest("button,a,select")) return; openLeadDetail(card.dataset.open); }));
     list.querySelectorAll("[data-stage-id]").forEach(select => select.addEventListener("change", async () => {
       const lead = leads.find(item => item.id === select.dataset.stageId);
       if (!lead) return;
@@ -579,7 +579,7 @@
     ];
     $("reminderList").innerHTML = entries.length ? entries.join("") : '<p class="reminder-empty">Todo al día. No tienes pendientes vencidos.</p>';
     $("reminderList").querySelectorAll("[data-reminder-property]").forEach(button => button.addEventListener("click", () => { $("remindersDialog").close(); showPropertyDetail(button.dataset.reminderProperty); }));
-    $("reminderList").querySelectorAll("[data-reminder-lead]").forEach(button => button.addEventListener("click", () => { $("remindersDialog").close(); editLead(button.dataset.reminderLead); }));
+    $("reminderList").querySelectorAll("[data-reminder-lead]").forEach(button => button.addEventListener("click", () => { $("remindersDialog").close(); openLeadDetail(button.dataset.reminderLead); }));
     applyStackOrder();
   }
   function applyStackOrder() {
@@ -805,6 +805,50 @@
     $("leadDialog").showModal();
     if (prefill.name) $("clientType").focus(); else $("name").focus();
   }
+  // La ficha de lectura se usa únicamente en pantallas pequeñas.
+  function openLeadDetail(id) {
+    if (!window.matchMedia("(max-width: 620px)").matches) {
+      editLead(id);
+      return;
+    }
+    const lead = leads.find(item => item.id === id);
+    if (!lead) return;
+    const dialog = $("mobileLeadDetail");
+    $("mobileLeadName").textContent = lead.name || "Contacto";
+    $("mobileLeadType").textContent = [lead.clientType, lead.zone].filter(Boolean).join(" · ");
+    const fields = [
+      ["Teléfono", lead.phone], ["Correo", lead.email],
+      ["Operación", lead.operation], ["Tipo de propiedad", lead.propertyType],
+      ["Zona / ciudad", lead.zone], ["Presupuesto", lead.budget ? moneyMXN(lead.budget) : ""],
+      ["Tipo de crédito", lead.creditType], ["Etapa", lead.stage],
+      ["Origen del contacto", lead.source],
+      ["Próximo seguimiento", lead.nextContact ? localDateTime(lead.nextContact) : ""],
+      ["Medio de seguimiento", lead.nextChannel]
+    ];
+    $("mobileLeadFields").innerHTML = fields.filter(([,value]) => value != null && String(value).trim()).map(([label,value]) =>
+      `<div><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`
+    ).join("");
+    $("mobileLeadNotes").textContent = lead.comments || "Sin observaciones registradas.";
+    const phone = whatsappNumber(lead.phone);
+    const wa = $("mobileLeadWhats");
+    const call = $("mobileLeadCall");
+    wa.hidden = !phone;
+    call.hidden = !phone;
+    if (phone) {
+      wa.href = `https://wa.me/${phone}`;
+      call.href = `tel:${phone}`;
+    }
+    $("mobileLeadEdit").onclick = () => { dialog.close(); editLead(id); };
+    $("mobileLeadReminder").onclick = () => {
+      dialog.close();
+      editLead(id);
+      $("nextContact").focus();
+      $("nextContact").scrollIntoView({ block: "center", behavior: "smooth" });
+    };
+    dialog.showModal();
+  }
+  $("mobileLeadClose").addEventListener("click", () => $("mobileLeadDetail").close());
+
   function editLead(id) {
     const lead = leads.find(item => item.id === id); if (!lead) return;
     $("leadForm").reset(); $("dialogTitle").textContent = "Editar contacto"; $("deleteLeadBtn").hidden = false; setFormError("");

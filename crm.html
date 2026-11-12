@@ -40,6 +40,7 @@
   </div>
 </section>
 <main id="crmApp" class="layout" hidden>
+  <aside class="badigi-pc" aria-label="BaDigi, asistente inmobiliario"><img src="badigi-inmobiliario.webp" alt="BaDigi con carpeta de documentos Torrez y Maldonado" loading="lazy"></aside>
   <section class="intro">
     <div>
       <p class="eyebrow">RELACIONES · SEGUIMIENTO · OPERACIONES</p>
@@ -147,6 +148,20 @@
 
   <footer class="app-footer"><span>Torres Maldonado · Bienes raíces</span><span id="saveStatus">Tus datos permanecen en este navegador.</span></footer>
 </main>
+
+<dialog id="mobileLeadDetail" class="dialog mobile-lead-detail" aria-labelledby="mobileLeadName">
+  <div class="mobile-lead-inner">
+    <div class="dialog-head"><div><p class="eyebrow">FICHA DE CONTACTO</p><h2 id="mobileLeadName"></h2><small id="mobileLeadType"></small></div><button id="mobileLeadClose" class="icon-button close-button" type="button" aria-label="Cerrar ficha">×</button></div>
+    <div id="mobileLeadFields" class="mobile-lead-fields"></div>
+    <div class="mobile-lead-notes"><strong>Observaciones</strong><p id="mobileLeadNotes"></p></div>
+    <div class="mobile-lead-buttons">
+      <a id="mobileLeadWhats" class="button button-outline" target="_blank" rel="noopener">WhatsApp</a>
+      <a id="mobileLeadCall" class="button button-outline">Llamar</a>
+      <button id="mobileLeadReminder" class="button button-outline" type="button">Recordatorio</button>
+      <button id="mobileLeadEdit" class="button button-gold" type="button">Editar</button>
+    </div>
+  </div>
+</dialog>
 
 <dialog id="leadDialog" class="dialog">
   <form id="leadForm" method="dialog">

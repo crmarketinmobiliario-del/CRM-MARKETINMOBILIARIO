@@ -1,5 +1,5 @@
 
-const CACHE = "crm-capture-shell-v23";
+const CACHE = "crm-capture-shell-v24";
 
 const SHELL = [
   "./",
@@ -14,7 +14,7 @@ const SHELL = [
   "./push-config.js",
   "./supabase-config.js",
   "./icon-rm-192.png",
-  "./badge-crm-96.png"
+  "./badge-crm-96.png",
   "./icon-rm-512.png"
 ];
 
