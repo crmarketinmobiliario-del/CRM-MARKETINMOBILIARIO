@@ -498,7 +498,7 @@
       const phone = whatsappNumber(lead.phone);
       const credit = [lead.creditType, lead.budget ? moneyMXN(lead.budget) : ""].filter(Boolean).join(" · ") || "Sin definir";
       return `<article class="lead-card" data-open="${esc(lead.id)}">
-        <div class="lead-main"><h3>${esc(lead.name)}</h3><div>${tags}</div><div class="lead-meta">${esc(lead.zone || "Zona por definir")}${lead.zoneType ? ` · ${esc(lead.zoneType)}` : ""}</div></div>
+        <div class="lead-main"><h3>${esc(lead.name)}</h3><div>${tags}</div><div class="lead-meta"><span class="mobile-type">${esc(lead.clientType || "Contacto")} · </span>${esc(lead.zone || "Ciudad por definir")}${lead.zoneType ? ` · ${esc(lead.zoneType)}` : ""}</div></div>
         <div><div class="lead-label">Contacto</div><div class="lead-value">${esc(lead.phone || "Sin teléfono")}<br>${esc(lead.email || "Sin email")}</div></div>
         <div><div class="lead-label">Crédito · monto</div><div class="lead-value">${esc(credit)}</div></div>
         <div><div class="lead-label">Próximo seguimiento</div><div class="lead-value">${esc(next)}<br>${esc(lead.nextChannel || "Canal por definir")}</div></div>
@@ -841,13 +841,32 @@
     $("mobileLeadEdit").onclick = () => { dialog.close(); editLead(id); };
     $("mobileLeadReminder").onclick = () => {
       dialog.close();
-      editLead(id);
-      $("nextContact").focus();
-      $("nextContact").scrollIntoView({ block: "center", behavior: "smooth" });
+      $("quickReminderLeadId").value = id;
+      $("quickReminderName").textContent = lead.name;
+      $("quickReminderDate").value = toLocalDateTimeInput(lead.nextContact) || "";
+      $("quickReminderChannel").value = lead.nextChannel || "Llamada";
+      $("quickReminderDialog").showModal();
     };
     dialog.showModal();
   }
   $("mobileLeadClose").addEventListener("click", () => $("mobileLeadDetail").close());
+  $("quickReminderClose").addEventListener("click", () => $("quickReminderDialog").close());
+  $("quickReminderForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    const lead = leads.find(item => item.id === $("quickReminderLeadId").value);
+    const date = $("quickReminderDate").value;
+    if (!lead || !date) return;
+    const button = $("quickReminderSave"); button.disabled = true;
+    try {
+      const updated = {...lead, nextContact:date, nextChannel:$("quickReminderChannel").value, updatedAt:new Date().toISOString()};
+      const result = await putLead(updated);
+      await refresh();
+      $("quickReminderDialog").close();
+      setStatus(result.synced ? "Recordatorio guardado y sincronizado." : "Recordatorio guardado localmente; sincronización pendiente.");
+    } catch (error) { setStatus(`No se pudo guardar el recordatorio: ${error.message}`); }
+    finally { button.disabled = false; }
+  });
+
 
   function editLead(id) {
     const lead = leads.find(item => item.id === id); if (!lead) return;

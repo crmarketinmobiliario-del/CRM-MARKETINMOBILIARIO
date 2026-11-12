@@ -149,6 +149,16 @@
   <footer class="app-footer"><span>Torres Maldonado · Bienes raíces</span><span id="saveStatus">Tus datos permanecen en este navegador.</span></footer>
 </main>
 
+<dialog id="quickReminderDialog" class="dialog mobile-quick-reminder">
+  <form id="quickReminderForm" class="mobile-quick-reminder-inner">
+    <div class="dialog-head"><div><p class="eyebrow">SEGUIMIENTO</p><h2>Nuevo recordatorio</h2><small id="quickReminderName"></small></div><button id="quickReminderClose" class="icon-button close-button" type="button" aria-label="Cerrar">×</button></div>
+    <input id="quickReminderLeadId" type="hidden">
+    <label>Fecha y hora<input id="quickReminderDate" type="datetime-local" required></label>
+    <label>Medio<select id="quickReminderChannel"><option>Llamada</option><option>WhatsApp</option><option>Messenger</option><option>Visita</option><option>Seguimiento</option></select></label>
+    <button id="quickReminderSave" type="submit" class="button button-gold">Guardar recordatorio</button>
+    <p class="quick-reminder-help">Se guarda en el CRM. Los avisos automáticos requieren el servicio Push del servidor.</p>
+  </form>
+</dialog>
 <dialog id="mobileLeadDetail" class="dialog mobile-lead-detail" aria-labelledby="mobileLeadName">
   <div class="mobile-lead-inner">
     <div class="dialog-head"><div><p class="eyebrow">FICHA DE CONTACTO</p><h2 id="mobileLeadName"></h2><small id="mobileLeadType"></small></div><button id="mobileLeadClose" class="icon-button close-button" type="button" aria-label="Cerrar ficha">×</button></div>

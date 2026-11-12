@@ -225,3 +225,18 @@ body,.topbar{background:#000}.topbar{border-color:#383838}.lead-card,.property-c
 .badigi-pc{position:fixed;right:8px;bottom:8px;width:92px;z-index:5;pointer-events:none;opacity:.92}
 .badigi-pc img{display:block;width:100%;height:auto;border-radius:10px}
 @media(max-width:620px){.badigi-pc{display:none!important}}
+
+/* Ajustes exclusivamente para celular, PC sin cambios */
+@media(max-width:620px){
+#leadList>.lead-card{top:74px!important;min-height:70px!important;z-index:var(--stack-index,1)!important;transition:box-shadow .2s ease,background .2s ease}
+#leadList>.lead-card>.lead-main>div:nth-child(2){display:none!important}
+#leadList>.lead-card .mobile-type{color:var(--gold);font-weight:600}
+#leadList>.lead-card:active{background:#242018!important}
+.mobile-lead-detail[open]{width:calc(100% - 12px)!important;max-height:96dvh!important}
+.mobile-lead-buttons .button{min-height:48px;font-size:.88rem}
+.mobile-quick-reminder[open]{width:calc(100% - 24px);max-width:460px;border-radius:12px}
+.mobile-quick-reminder-inner{padding:20px 16px;display:grid;gap:15px}
+.mobile-quick-reminder-inner label{display:grid;gap:7px}
+.mobile-quick-reminder-inner input,.mobile-quick-reminder-inner select{width:100%;min-height:44px}
+.quick-reminder-help{font-size:.78rem;color:#b8ac96;line-height:1.5}
+}
