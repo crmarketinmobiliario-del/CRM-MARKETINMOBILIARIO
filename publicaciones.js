@@ -16,6 +16,8 @@
   let imageObjectUrl = "";
   let lastNetwork = "facebook";
   let loaded = false;
+  let photoObserver = null;
+  let openSequence = 0;
   const dialog = $("publicationDialog");
   const canvas = $("pubCanvas");
   if (!dialog || !canvas) return;
@@ -204,11 +206,31 @@
     lastNetwork = "facebook";
     restore(lastNetwork);
     dialog.showModal();
-    const preview = $("propertyPhotoPreview").querySelector("img");
+    const currentId = propertyId;
+    const sequence = ++openSequence;
+    if (photoObserver) { photoObserver.disconnect(); photoObserver = null; }
     activeImage = null;
     render();
-    if (preview?.src) void loadImage(preview.src);
-    else status("Selecciona una fotografía para preparar la publicación.");
+    // Esperar a que la ficha termine de obtener su fotografía desde Supabase.
+    const preview = $("propertyPhotoPreview");
+    const useCurrentPhoto = () => {
+      if (sequence !== openSequence || propertyId !== currentId || !dialog.open) return;
+      if (preview.dataset.propertyId && preview.dataset.propertyId !== currentId) return;
+      const state = preview.dataset.photoState;
+      const img = preview.querySelector("img");
+      if (img?.src && state !== "loading") {
+        if (photoObserver) { photoObserver.disconnect(); photoObserver = null; }
+        void loadImage(img.src);
+      } else if (state === "empty") {
+        if (photoObserver) { photoObserver.disconnect(); photoObserver = null; }
+        status("Esta propiedad no tiene fotografía principal disponible. Puedes elegir una foto manualmente.");
+      } else {
+        status("Cargando la fotografía de esta propiedad...");
+      }
+    };
+    photoObserver = new MutationObserver(useCurrentPhoto);
+    photoObserver.observe(preview, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-photo-state", "data-property-id", "src"] });
+    useCurrentPhoto();
   }
   $("openPublicationCenter").addEventListener("click", open);
   // El botón solo aparece al editar una propiedad existente; una propiedad nueva debe guardarse primero.
@@ -235,6 +257,8 @@
   $("pubDownload").addEventListener("click", () => { void downloadImage().catch(error => status(error.message)); });
   $("pubShare").addEventListener("click", () => { void share().catch(error => status(error.message)); });
   dialog.addEventListener("close", () => {
+    ++openSequence;
+    if (photoObserver) { photoObserver.disconnect(); photoObserver = null; }
     if (propertyId) saveDraft();
     if (imageObjectUrl) { URL.revokeObjectURL(imageObjectUrl); imageObjectUrl = ""; }
     $("pubImageFile").value = "";
