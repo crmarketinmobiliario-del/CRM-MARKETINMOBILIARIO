@@ -92,8 +92,53 @@
       status("Fotografía lista para revisar y exportar.");
     } catch (error) { activeImage = null; render(); status(error.message); }
   }
+  // Generación local: redacta exclusivamente con datos reales de la ficha.
+  // No requiere IA externa, claves API ni permisos adicionales.
+  function generatePublication() {
+    const value = id => ($(id)?.value || "").trim();
+    const title = value("propertyTitle");
+    const operation = value("propertyOperation");
+    const kind = value("propertyKind");
+    const zone = value("propertyZone");
+    const price = value("propertyPrice");
+    const surface = value("propertySurface");
+    const unit = value("propertySurfaceUnit") || "m²";
+    const description = value("propertyDescription");
+    const phone = value("propertyPublicPhone");
+    const email = value("propertyPublicEmail");
+    const code = value("pubCode") || normalizeCode(title);
+    if (!title && !zone && !description) {
+      status("Primero registra el título, la zona o la descripción de la propiedad.");
+      return;
+    }
+    const type = kind ? kind.toLowerCase() : "propiedad";
+    const verb = operation.toLowerCase() === "renta" ? "EN RENTA" : "EN VENTA";
+    const headline = title || `${kind || "Propiedad"} ${verb.toLowerCase()}${zone ? ` en ${zone}` : ""}`;
+    const details = [
+      zone ? `Ubicación: ${zone}` : "",
+      surface ? `Superficie: ${surface} ${unit}` : "",
+      price ? `Precio: ${price} MXN` : ""
+    ].filter(Boolean);
+    const paragraphs = [
+      `Descubre esta ${type} ${verb.toLowerCase()}${zone ? ` en ${zone}` : ""}. Una oportunidad para conocer y valorar en persona.`,
+      description,
+      details.join("\n")
+    ].filter(Boolean);
+    $("pubTitle").value = code && !headline.includes(code) ? `${headline} | ${code}` : headline;
+    $("pubCaption").value = paragraphs.join("\n\n");
+    $("pubCta").value = "Solicita más información y agenda tu visita.";
+    $("pubPhone").value = phone || value("pubPhone");
+    $("pubEmail").value = email || value("pubEmail");
+    const tags = [operation.toLowerCase() === "renta" ? "#PropiedadEnRenta" : "#PropiedadEnVenta", "#MarketInmobiliario", "#TorresMaldonado"];
+    if (zone) tags.splice(1, 0, `#${zone.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "")}`);
+    $("pubTags").value = tags.join(" ");
+    saveDraft();
+    render();
+    status("Publicación redactada con los datos de la ficha. Revisa el texto y la fotografía antes de compartir.");
+  }
+  $("pubGenerate")?.addEventListener("click", generatePublication);
   function buildText() {
-    return [$("pubTitle").value.trim(), $("pubCaption").value.trim(), $("pubCta").value.trim(), $("pubTags").value.trim(), $("pubUrl").value.trim()].filter(Boolean).join("\n\n");
+    return [$("pubTitle").value.trim(), $("pubCaption").value.trim(), $("pubCta").value.trim(), $("pubPhone")?.value.trim() ? `WhatsApp: ${$("pubPhone").value.trim()}` : "", $("pubEmail")?.value.trim() ? `Correo: ${$("pubEmail").value.trim()}` : "", $("pubTags").value.trim(), $("pubUrl").value.trim()].filter(Boolean).join("\n\n");
   }
   async function imageBlob() {
     if (!activeImage) throw new Error("Selecciona una fotografía antes de exportar o compartir.");
