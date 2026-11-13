@@ -118,34 +118,43 @@
     try { await navigator.clipboard.writeText(text); status("Texto copiado. Pégalo en tu publicación."); }
     catch (_) { status("No se pudo copiar automáticamente. Selecciona el texto del editor para copiarlo."); }
   }
-  async function share() {
+  // Compartir por red seleccionada. Los navegadores no pueden imponer
+  // que otra aplicación nativa abra su editor ni adjuntar fotos allí.
+  // Abrimos el destino en el mismo gesto del usuario para evitar
+  // bloqueadores de ventanas emergentes.
+  function share() {
     const network = $("pubNetwork").value;
     const text = buildText();
     const url = $("pubUrl").value.trim();
-    let blob = null;
-    try { blob = await imageBlob(); }
-    catch (error) { status(error.message); return; }
-    const file = new File([blob], `${$("pubCode").value || "propiedad"}.jpg`, { type: "image/jpeg" });
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], text, title: $("pubTitle").value });
-        status("Se abrió el menú de compartir. Selecciona la aplicación y confirma el envío.");
-      } catch (error) { if (error.name !== "AbortError") status(`No se pudo compartir: ${error.message}`); }
-      return;
-    }
-    if (network === "facebook" && /^https?:\/\//i.test(url)) {
-      await copyText();
-      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, "_blank", "noopener,noreferrer");
-      status("Se abrió Facebook para compartir el enlace público. El texto está copiado; revisa y publica manualmente. La foto no se adjunta automáticamente.");
-      return;
-    }
+
     if (network === "whatsapp") {
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
-      status("Se abrió WhatsApp con el texto. Para adjuntar la foto, descárgala primero.");
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`,
+        "_blank", "noopener,noreferrer");
+      status("WhatsApp abierto con el texto. Para enviar la foto, usa Descargar imagen.");
       return;
     }
-    await copyText();
-    status(`Tu navegador no permite compartir archivos directamente con ${network}. Descarga la imagen y pega el texto en la aplicación.`);
+
+    const destinations = {
+      facebook: /^https?:\/\//i.test(url)
+        ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`
+        : "https://www.facebook.com/",
+      instagram: "https://www.instagram.com/",
+      tiktok: "https://www.tiktok.com/upload"
+    };
+    const destination = destinations[network];
+    if (!destination) {
+      status("Red social no reconocida.");
+      return;
+    }
+
+    // Iniciamos el copiado sin esperar para preservar el gesto de clic.
+    // El botón Copiar texto permanece como alternativa si el navegador
+    // rechaza el portapapeles por cambiar de aplicación.
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(text).catch(() => {});
+    }
+    const opened = window.open(destination, "_blank", "noopener,noreferrer");
+    status(`Se abrió el acceso a ${network}. Si no se abre su aplicación, utiliza la versión web. Descarga la foto y usa Copiar texto si hace falta.`);
   }
   function open() {
     propertyId = $("propertyId").value;
